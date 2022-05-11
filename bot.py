@@ -140,7 +140,7 @@ def main():
 
     # Start the Bot
     # updater.start_polling()
-    PORT = int(os.environ.get("PORT", "80"))
+    PORT = int(os.environ.get("PORT", "443"))
     updater.start_webhook(listen="0.0.0.0",
                           port=PORT,
                           url_path=TOKEN)
