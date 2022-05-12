@@ -1,28 +1,16 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# This program is dedicated to the public domain under the CC0 license.
-
 """
-Simple Bot to reply to Telegram messages.
-
-First, a few handler functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
-
-Usage:
-Basic Echobot example, repeats messages.
-Press Ctrl-C on the command line or send a signal to the process to stop the
-bot.
+Telegram Bot that provides training information and encouragement to SGS NDP 2022 participants.
 """
 
 import logging
 import os
 from datetime import datetime
 import json
+import re
+import requests
 
-from telegram.utils.helpers import escape_markdown
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, ReplyKeyboardMarkup, KeyboardButton, Bot
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, CallbackQueryHandler
+from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 TOKEN = os.environ["TOKEN"]
 
@@ -32,10 +20,19 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 logger = logging.getLogger(__name__)
 
-# Define a few command handlers. These usually take the two arguments update and
-# context. Error handlers also receive the raised TelegramError object in error.
+FIRST_STEP, SECOND_STEP = range(2)
+
+#/start handler
 def start(update, context: CallbackContext):
     """Send a message when the command /start is issued."""
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
+    if update.message.from_user.last_name==None:
+        lastname="Nil"
+    else:
+        lastname=update.message.from_user.last_name
     keyboard = [
         [KeyboardButton("Next NDP activity?")],
         [KeyboardButton("Zoom link?")],
@@ -43,18 +40,47 @@ def start(update, context: CallbackContext):
         [KeyboardButton("Daily encouragement")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard)
+
+    # Log user in DB
+    logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': start')
+    url = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/user/'
+    data = {
+                'username':username,
+                'firstname': update.message.from_user.first_name,
+                'lastname': lastname
+            }
+    response = requests.post(url, data = data)
+
     update.message.reply_text('Please select your query:', reply_markup=reply_markup)
 
+#/help handler
 def help(update, context):
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
     """Send a message when the command /help is issued."""
-    update.message.reply_text('Hi there! I can assist you on your SGS NDP 2022 journey!\n\nSend the following commands to get started:\n/start - Lists all the queries I can help you with!\n/about - Learn more about me!\n/help - Describes how to use me!')
+    logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': help')
+    update.message.reply_text('Hi '+update.message.from_user.first_name+'! I am NamjaNinja! I can assist you on your SGS NDP 2022 journey!\n\nSend the following commands to get started:\n/start - Lists all the queries I can help you with\n/about - Learn more about me\n/feedback - Tell me how I can improve\n/help - Describes how to use me')
 
+#/about handler
 def about(update, context):
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
     """Send a message when the command /about is issued."""
-    update.message.reply_text('xxxbot is a telegram bot that is aimed at easily allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot.\n\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. Thank you for your understanding.')
+    logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': about')
+    update.message.reply_text('NamjaNinjaBot is a telegram bot that is aimed at easily allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot.\n\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. Thank you for your understanding')
 
+#determine reply after query chosen
 def reply(update, context):
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
     if update.message.text=="Next NDP activity?":
+        logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Next NDP activity?')
         # Find next NDP activity
         with open('./training.json', 'r') as f:
             data = json.load(f)
@@ -91,18 +117,21 @@ def reply(update, context):
         update.message.reply_text(reply, parse_mode='Markdown')
 
     elif update.message.text=="Last updated?":
+        logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Last updated?')
         with open('./training.json', 'r') as f:
             data = json.load(f)
             f.close()
             update.message.reply_text("The training schedule for the bot was last updated on: "+data["lastupdate"])
 
     elif update.message.text=="Zoom link?":
+        logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Zoom link?')
         with open('./training.json', 'r') as f:
             data = json.load(f)
             f.close()
         update.message.reply_text("Zoom Link: "+data["zoomlink"])
 
     elif update.message.text=="Daily encouragement":
+        logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Daily encouragement')
         link="https://www.sokaglobal.org/resources/daily-encouragement/"
         today = datetime.now()
         month=today.strftime("%B").lower()
@@ -110,8 +139,73 @@ def reply(update, context):
         update.message.reply_text(link)
         
     else:
-        update.message.reply_text('Please select a valid question')
+        update.message.reply_text('Please select a valid question or type /help')
 
+#/feedback handler
+def feedback(update, context):
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
+    logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': feedback')
+    """Send a message when the command /feedback is issued."""
+    update.message.reply_text('NamjaNinjaBot will listen to all feedback. Please follow the steps to submit one. If you decided to change your mind, just type /cancel')
+    update.message.reply_text("What's your participant code:")
+    return FIRST_STEP
+
+#feedback: get participant code
+def first_step(update, context):
+    isValidPartCode = re.match("^[AaBbCcDdEeFf][0-9][0-9][0-9]$", update.message.text)
+    if isValidPartCode:
+        context.user_data["participantCode"] = update.message.text
+        update.message.reply_text('Please type your feedback:')
+        return SECOND_STEP
+    else:
+        update.message.reply_text('Invalid participant code. Please try again:')
+        return FIRST_STEP
+
+#feedback: get feedback and submit to DB
+def second_step(update, context):
+    lengthOfFeedback=len(update.message.text)
+    if lengthOfFeedback<=500:
+        url = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/feedback/'
+        if update.message.from_user.last_name==None:
+            lastname="Nil"
+        else:
+            lastname=update.message.from_user.last_name
+        if update.message.from_user.username==None:
+            username="Nil"
+        else:
+            username=update.message.from_user.username
+
+        data = {'participantCode': context.user_data["participantCode"],
+                'username':username,
+                'firstname': update.message.from_user.first_name,
+                'lastname': lastname,
+                "feedback": update.message.text
+                }
+        response = requests.post(url, data = data)
+        if response.status_code == 201:
+            update.message.reply_text("Thank you for your feedback!")
+            return ConversationHandler.END
+        else:
+            update.message.reply_text("Failed to submit feedback. Please try again later")
+            return ConversationHandler.END
+    else:
+        update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
+        return SECOND_STEP
+
+#/cancel handler
+def cancel(update, context):
+    if update.message.from_user.username==None:
+        username="Nil"
+    else:
+        username=update.message.from_user.username
+    logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': cancel')
+    update.message.reply_text("Cancelled feedback submission")
+    return ConversationHandler.END
+
+#/error handler
 def error(update, context):
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
@@ -121,7 +215,6 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    # updater = Updater("5364483829:AAFwah_x3WCBtiRJ7cnVv9JFIt_kQgp7g_k", use_context=True)
     updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
@@ -131,6 +224,16 @@ def main():
     dp.add_handler(CommandHandler("start", start))
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("about", about))
+
+    conversation_handler = ConversationHandler(
+        entry_points=[CommandHandler('feedback', feedback)],
+        states={
+            FIRST_STEP: [MessageHandler(Filters.text & ~Filters.command, first_step)],
+            SECOND_STEP: [MessageHandler(Filters.text & ~Filters.command, second_step)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+    dp.add_handler(conversation_handler)
 
     # on noncommand i.e message - reply the message on Telegram
     dp.add_handler(MessageHandler(Filters.text, reply))
@@ -145,7 +248,6 @@ def main():
                           port=PORT,
                           url_path=TOKEN,
                           webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
-    # updater.bot.set_webhook("https://{}.herokuapp.com/{}".format("namjaninjabot", TOKEN))
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
