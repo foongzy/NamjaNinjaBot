@@ -33,6 +33,8 @@ def start(update, context: CallbackContext):
     #reset
     context.user_data.pop('participantCode', None)
     context.user_data.pop('token', None)
+    context.user_data["cancelCmd"]="login"
+    context.user_data["loginTries"]=0
     update.message.reply_text("What's your participant code:")
     logging.info('User attempting login: '+update.message.from_user.first_name)
     return LOGIN_STEP
@@ -51,7 +53,7 @@ def login_step(update, context):
     #check if valid participantCode
     isValidPartCode = re.match("^[AaBbCcDdEeFf][0-6][0-3][0-9]$", update.message.text)
     if isValidPartCode:
-        partCode=update.message.text.capitalize()
+        partCode=update.message.text.capitalize().strip()
         context.user_data["participantCode"] = partCode
         url = baseurl+'user/'+partCode+'/'
         data = {
@@ -74,14 +76,22 @@ def login_step(update, context):
                 [KeyboardButton("Last updated?")],
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard)
+            context.user_data.pop('cancelCmd', None)
+            context.user_data.pop('loginTries', None)
             logging.info('Successful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
             update.message.reply_text('Please select your query:', reply_markup=reply_markup)
             return ConversationHandler.END
         else:
+            context.user_data.pop('cancelCmd', None)
+            context.user_data.pop('loginTries', None)
             logging.error('Unsuccessful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
             update.message.reply_text('Unable to process request at this time. Please try again later')
             return ConversationHandler.END
     else:
+        if context.user_data["loginTries"]>=3:
+            update.message.reply_text('You can type /cancel to exit')
+            logging.warning(update.message.from_user.first_name+' ('+username+') failed to login '+str(context.user_data["loginTries"])+' times')
+        context.user_data["loginTries"]=context.user_data["loginTries"]+1
         update.message.reply_text('Invalid participant code. Please try again:')
         return LOGIN_STEP
 
@@ -224,7 +234,7 @@ def reply(update, context):
                     i=i+1
                 dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                 countdownToNext=dateToFormat-today
-                seconds = countdownToNext.total_seconds()
+                seconds = countdownToNext.total_seconds()-28800
                 hours = str(seconds // 3600 % 24).replace(".0","")
                 minutes = str((seconds % 3600) // 60).replace(".0","")
                 seconds = str(math.floor(seconds % 60))
@@ -235,7 +245,7 @@ def reply(update, context):
                 countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                 NDPDate=datetime(2022, 9, 9)
                 countdownToNDP=NDPDate-today
-                seconds = countdownToNDP.total_seconds()
+                seconds = countdownToNDP.total_seconds()-28800
                 hours = str(seconds // 3600 % 24).replace(".0","")
                 minutes = str((seconds % 3600) // 60).replace(".0","")
                 seconds = str(math.floor(seconds % 60))
@@ -268,6 +278,7 @@ def reply(update, context):
 
 #/feedback handler
 def feedback(update, context):
+    context.user_data["cancelCmd"]="feedback"
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': feedback')
@@ -311,6 +322,7 @@ def first_step(update, context):
                 logging.info(update.message.from_user.first_name+' successfully submitted feedback')
             else:
                 logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
+            context.user_data.pop('cancelCmd', None)
             return ConversationHandler.END
         else:
             if update.message.from_user.username==None:
@@ -318,6 +330,7 @@ def first_step(update, context):
             else:
                 logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
             update.message.reply_text("Failed to submit feedback. Please try again later")
+            context.user_data.pop('cancelCmd', None)
             return ConversationHandler.END
     else:
         update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
@@ -331,7 +344,14 @@ def cancel(update, context):
     else:
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': cancel')
-    update.message.reply_text("Cancelled feedback submission")
+    if context.user_data["cancelCmd"]=="feedback":
+        update.message.reply_text("Cancelled feedback submission")
+    elif context.user_data["cancelCmd"]=="login":
+        context.user_data.pop('loginTries', None)
+        update.message.reply_text("Cancelled process")
+    else:
+        update.message.reply_text("Cancelled process")
+    context.user_data.pop('cancelCmd', None)
     return ConversationHandler.END
 
 #/error handler
