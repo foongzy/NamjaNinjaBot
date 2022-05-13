@@ -70,8 +70,8 @@ def login_step(update, context):
                 [KeyboardButton("Next NDP activity?")],
                 [KeyboardButton("Zoom link?")],
                 [KeyboardButton("Countdown")],
-                [KeyboardButton("Last updated?")],
                 [KeyboardButton("Daily encouragement")],
+                [KeyboardButton("Last updated?")],
             ]
             reply_markup = ReplyKeyboardMarkup(keyboard)
             logging.info('Successful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
