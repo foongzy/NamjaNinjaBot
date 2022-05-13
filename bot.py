@@ -8,11 +8,12 @@ from datetime import datetime
 import json
 import re
 import requests
+import math
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
-# TOKEN = os.environ["TOKEN"]
+TOKEN = os.environ["TOKEN"]
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -22,6 +23,9 @@ logger = logging.getLogger(__name__)
 
 FIRST_STEP = range(1)
 LOGIN_STEP = range(1)
+
+baseurl = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/'
+# baseurl = 'http://127.0.0.1:8000/api/namjaninjabot/'
 
 #/start handler
 def start(update, context: CallbackContext):
@@ -49,8 +53,7 @@ def login_step(update, context):
     if isValidPartCode:
         partCode=update.message.text.capitalize()
         context.user_data["participantCode"] = partCode
-        # url = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/user/'+partCode+'/'
-        url = 'http://127.0.0.1:8000/api/namjaninjabot/user/'+partCode+'/'
+        url = baseurl+'user/'+partCode+'/'
         data = {
                 'participantCode':partCode,
                 'username':username,
@@ -62,9 +65,11 @@ def login_step(update, context):
         parse_json = json.loads(data)
         context.user_data["token"] = parse_json['token']
         if response.status_code == 200:
+            #got user's session token and participant code. enable user to use the service
             keyboard = [
                 [KeyboardButton("Next NDP activity?")],
                 [KeyboardButton("Zoom link?")],
+                [KeyboardButton("Countdown")],
                 [KeyboardButton("Last updated?")],
                 [KeyboardButton("Daily encouragement")],
             ]
@@ -73,6 +78,7 @@ def login_step(update, context):
             update.message.reply_text('Please select your query:', reply_markup=reply_markup)
             return ConversationHandler.END
         else:
+            logging.error('Unsuccessful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
             update.message.reply_text('Unable to process request at this time. Please try again later')
             return ConversationHandler.END
     else:
@@ -101,72 +107,148 @@ def about(update, context):
     """Send a message when the command /about is issued."""
     update.message.reply_text('NamjaNinjaBot is a telegram bot that is aimed at easily allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot.\n\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. Thank you for your understanding')
 
-#determine reply after query chosen
+#determine reply after query chosen, ensures participantCode and session token is available
 def reply(update, context):
-    if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
+    if 'participantCode' in context.user_data and context.user_data["participantCode"]!="" and 'token' in context.user_data and context.user_data["token"]!="":
         if update.message.from_user.username==None:
             username=""
         else:
             username=update.message.from_user.username
+        urlDets = baseurl+'details/'+context.user_data["participantCode"]+"/1/"
+        urlTrainings = baseurl+'training/'+context.user_data["participantCode"]+"/1/"
+        headers = {
+            "token":context.user_data["token"]
+        }
         if update.message.text=="Next NDP activity?":
             if update.message.from_user.username==None:
                 logging.info('Question asked by '+update.message.from_user.first_name+': Next NDP activity?')
             else:
                 logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Next NDP activity?')
             # Find next NDP activity
-            with open('./training.json', 'r') as f:
-                data = json.load(f)
-                f.close()
-            today = datetime.now()
-            daysdiff=""
-            smallestDateIndex=""
-            i=0
-            for item in data["schedule"]:
-                if item["datetime_end"]!="TBA":
-                    datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                    if datetimeInterator > today:
-                        difftemp=datetimeInterator-today
-                        if daysdiff == "" or difftemp < daysdiff:
-                            smallestDateIndex=i
-                            daysdiff=difftemp
-                i=i+1
-            # Format Date to Display
-            dateToFormat=datetime.strptime(data["schedule"][smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-            dateToFormatEnd=datetime.strptime(data["schedule"][smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-            reply="*"+data["schedule"][smallestDateIndex]["title"]+"*\n"+"📍: "+data["schedule"][smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
-            if data["schedule"][smallestDateIndex]["Note"]!="Nil":
-                reply=reply+"\n"+"📝: "+data["schedule"][smallestDateIndex]["Note"]
-            if data["schedule"][smallestDateIndex]["location"]=="Zoom":
-                reply=reply+"\n"+"Zoom Link: "+data["zoomlink"]
-            if data["schedule"][smallestDateIndex]["title"]=="NDP Training":
-                reply=reply+"\n\n"+"Attire: "
-                for i in range(0, len(data["training_attire"])):
-                    reply=reply+"\n    "+"- "+data["training_attire"][i]
-                if data["schedule"][smallestDateIndex]["location"]=="Keat Hong Camp":
-                    reply=reply+"\n"+"Things to Bring: "
-                    for i in range(0, len(data["training_bring"])):
-                        reply=reply+"\n    "+str(i+1)+") "+data["training_bring"][i]
-            update.message.reply_text(reply, parse_mode='Markdown')
+            responseDets=requests.get(urlDets, headers=headers)
+            responseTraining=requests.get(urlTrainings, headers=headers)
+            if responseDets.status_code == 200 and responseTraining.status_code == 200:
+                data = responseDets.text
+                dataDets = json.loads(data)
+                data = responseTraining.text
+                dataTrain = json.loads(data)
+
+                today = datetime.now()
+                daysdiff=""
+                smallestDateIndex=""
+                i=0
+                for item in dataTrain:
+                    if item["datetime_end"]!="TBA":
+                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        if datetimeInterator > today:
+                            difftemp=datetimeInterator-today
+                            if daysdiff == "" or difftemp < daysdiff:
+                                smallestDateIndex=i
+                                daysdiff=difftemp
+                    i=i+1
+                # Format Date to Display
+                dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                # Format reply
+                reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
+                if dataTrain[smallestDateIndex]["Note"]!="Nil":
+                    reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
+                if dataTrain[smallestDateIndex]["location"]=="Zoom":
+                    reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
+                if dataTrain[smallestDateIndex]["title"]=="NDP Training":
+                    reply=reply+"\n\n"+"Attire: "
+                    for i in range(0, len(dataDets["training_attire"])):
+                        reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
+                    if dataTrain[smallestDateIndex]["location"]=="Keat Hong Camp":
+                        reply=reply+"\n"+"Things to Bring: "
+                        for i in range(0, len(dataDets["training_bring"])):
+                            reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
+                logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                update.message.reply_text(reply, parse_mode='Markdown')
+            else:
+                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                update.message.reply_text("Unable to get next training details. Please try again later.")
 
         elif update.message.text=="Last updated?":
             if update.message.from_user.username==None:
                 logging.info('Question asked by '+update.message.from_user.first_name+': Last updated?')
             else:
                 logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Last updated?')
-            with open('./training.json', 'r') as f:
-                data = json.load(f)
-                f.close()
-                update.message.reply_text("The training schedule for the bot was last updated on: "+data["lastupdate"])
+            response=requests.get(urlDets, headers=headers)
+            if response.status_code == 200:
+                data = response.text
+                parse_json = json.loads(data)
+                logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                update.message.reply_text("The training schedule for the bot was last updated on: "+parse_json["lastupdate"])
+            else:
+                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                update.message.reply_text("Unable to get training schedule last updated details. Please try again later.")
 
         elif update.message.text=="Zoom link?":
             if update.message.from_user.username==None:
                 logging.info('Question asked by '+update.message.from_user.first_name+': Zoom link?')
             else:
                 logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Zoom link?')
-            with open('./training.json', 'r') as f:
-                data = json.load(f)
-                f.close()
-            update.message.reply_text("Zoom Link: "+data["zoomlink"])
+            response=requests.get(urlDets, headers=headers)
+            if response.status_code == 200:
+                data = response.text
+                parse_json = json.loads(data)
+                logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                update.message.reply_text("Zoom Link: "+parse_json["zoomlink"])
+            else:
+                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                update.message.reply_text("Unable to get zoom link. Please try again later.")
+
+        elif update.message.text=="Countdown":
+            if update.message.from_user.username==None:
+                logging.info('Question asked by '+update.message.from_user.first_name+': Countdown')
+            else:
+                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Countdown')
+            # Find next NDP activity
+            responseTraining=requests.get(urlTrainings, headers=headers)
+            if responseTraining.status_code == 200:
+                data = responseTraining.text
+                dataTrain = json.loads(data)
+                today = datetime.now()
+                daysdiff=""
+                smallestDateIndex=""
+                i=0
+                for item in dataTrain:
+                    if item["datetime_end"]!="TBA":
+                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        if datetimeInterator > today:
+                            difftemp=datetimeInterator-today
+                            if daysdiff == "" or difftemp < daysdiff:
+                                smallestDateIndex=i
+                                daysdiff=difftemp
+                    i=i+1
+                dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                countdownToNext=dateToFormat-today
+                seconds = countdownToNext.total_seconds()
+                hours = str(seconds // 3600 % 24).replace(".0","")
+                minutes = str((seconds % 3600) // 60).replace(".0","")
+                seconds = str(math.floor(seconds % 60))
+                if countdownToNext.days==1:
+                    dayStr="Day"
+                else:
+                    dayStr="Days"
+                countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                NDPDate=datetime(2022, 9, 9)
+                countdownToNDP=NDPDate-today
+                seconds = countdownToNDP.total_seconds()
+                hours = str(seconds // 3600 % 24).replace(".0","")
+                minutes = str((seconds % 3600) // 60).replace(".0","")
+                seconds = str(math.floor(seconds % 60))
+                if countdownToNDP.days==1:
+                    dayStr="Day"
+                else:
+                    dayStr="Days"
+                countdownToNDPStr=str(countdownToNDP.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                update.message.reply_text('🎉 *Countdown* 🎉\nNext NDP activity: '+countdownToNextStr+'\nNDP 2022: '+countdownToNDPStr, parse_mode='Markdown')
+            else:
+                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                update.message.reply_text("Unable to get countdown. Please try again later.")
 
         elif update.message.text=="Daily encouragement":
             if update.message.from_user.username==None:
@@ -177,6 +259,7 @@ def reply(update, context):
             today = datetime.now()
             month=today.strftime("%B").lower()
             link = link + month + "-" + str(today.day) + ".html"
+            logging.info(context.user_data["participantCode"]+': Successfully answered question')
             update.message.reply_text(link)  
         else:
             update.message.reply_text('Please select a valid question or type /help')
@@ -211,12 +294,10 @@ def first_step(update, context):
         # if logged in
         if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
             partCode=context.user_data["participantCode"]
-            # url = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/feedback/'+partCode+'/'
-            url = 'http://127.0.0.1:8000/api/namjaninjabot/feedback/'+partCode+'/'
+            url=baseurl+'feedback/'+partCode+'/'
         else:
             partCode=""
-            # url = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/feedback/nil/'
-            url = 'http://127.0.0.1:8000/api/namjaninjabot/feedback/nil/'
+            url=baseurl+'feedback/nil/'
         data = {'participantCode': partCode,
                 'username':username,
                 'firstname': update.message.from_user.first_name,
@@ -263,8 +344,7 @@ def main():
     # Create the Updater and pass it your bot's token.
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
-    updater = Updater("5364483829:AAFwah_x3WCBtiRJ7cnVv9JFIt_kQgp7g_k", use_context=True)
-    # updater = Updater(TOKEN, use_context=True)
+    updater = Updater(TOKEN, use_context=True)
 
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
@@ -300,12 +380,12 @@ def main():
     dp.add_error_handler(error)
 
     # Start the Bot
-    updater.start_polling()
-    # PORT = int(os.environ.get("PORT", "8443"))
-    # updater.start_webhook(listen="0.0.0.0",
-    #                       port=PORT,
-    #                       url_path=TOKEN,
-    #                       webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
+    # updater.start_polling()
+    PORT = int(os.environ.get("PORT", "8443"))
+    updater.start_webhook(listen="0.0.0.0",
+                          port=PORT,
+                          url_path=TOKEN,
+                          webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
