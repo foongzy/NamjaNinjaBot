@@ -49,7 +49,7 @@ def login_step(update, context):
         lastname=update.message.from_user.last_name
 
     #check if valid participantCode
-    isValidPartCode = re.match("^[AaBbCcDdEeFf][0-3][0-3][0-9]$", update.message.text)
+    isValidPartCode = re.match("^[AaBbCcDdEeFf][0-6][0-3][0-9]$", update.message.text)
     if isValidPartCode:
         partCode=update.message.text.capitalize()
         context.user_data["participantCode"] = partCode
