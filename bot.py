@@ -299,7 +299,7 @@ def feedback(update, context):
 
 #feedback: get participant code
 def first_step(update, context):
-    if update.message.text !="Next NDP activity?" or  update.message.text !="Zoom link?"or update.message.text != "Countdown" or update.message.text !="Daily encouragement" or update.message.text !="Last updated?": 
+    if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?": 
         lengthOfFeedback=len(update.message.text)
         if lengthOfFeedback<=500:
             if update.message.from_user.last_name==None:
