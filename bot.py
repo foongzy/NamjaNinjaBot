@@ -3,8 +3,9 @@ Telegram Bot that provides training information and encouragement to SGS NDP 202
 """
 
 import logging
-import os
+import os, time
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import json
 import re
 import requests
@@ -143,7 +144,7 @@ def reply(update, context):
                 data = responseTraining.text
                 dataTrain = json.loads(data)
 
-                today = datetime.now()
+                today = datetime.now(ZoneInfo('Singapore'))
                 daysdiff=""
                 smallestDateIndex=""
                 i=0
@@ -177,7 +178,7 @@ def reply(update, context):
                 update.message.reply_text(reply, parse_mode='Markdown')
             else:
                 logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get next training details. Please try again later.")
+                update.message.reply_text("Unable to get next training details. Please try again later or type /start to reset")
 
         elif update.message.text=="Last updated?":
             if update.message.from_user.username==None:
@@ -192,7 +193,7 @@ def reply(update, context):
                 update.message.reply_text("The training schedule for the bot was last updated on: "+parse_json["lastupdate"])
             else:
                 logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get training schedule last updated details. Please try again later.")
+                update.message.reply_text("Unable to get training schedule last updated details. Please try again later or type /start to reset")
 
         elif update.message.text=="Zoom link?":
             if update.message.from_user.username==None:
@@ -207,7 +208,7 @@ def reply(update, context):
                 update.message.reply_text("Zoom Link: "+parse_json["zoomlink"])
             else:
                 logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get zoom link. Please try again later.")
+                update.message.reply_text("Unable to get zoom link. Please try again later or type /start to reset")
 
         elif update.message.text=="Countdown":
             if update.message.from_user.username==None:
@@ -219,7 +220,7 @@ def reply(update, context):
             if responseTraining.status_code == 200:
                 data = responseTraining.text
                 dataTrain = json.loads(data)
-                today = datetime.now()
+                today = datetime.now(ZoneInfo('Singapore'))
                 daysdiff=""
                 smallestDateIndex=""
                 i=0
@@ -234,7 +235,7 @@ def reply(update, context):
                     i=i+1
                 dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                 countdownToNext=dateToFormat-today
-                seconds = countdownToNext.total_seconds()-28800
+                seconds = countdownToNext.total_seconds()
                 hours = str(seconds // 3600 % 24).replace(".0","")
                 minutes = str((seconds % 3600) // 60).replace(".0","")
                 seconds = str(math.floor(seconds % 60))
@@ -245,7 +246,7 @@ def reply(update, context):
                 countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                 NDPDate=datetime(2022, 9, 9)
                 countdownToNDP=NDPDate-today
-                seconds = countdownToNDP.total_seconds()-28800
+                seconds = countdownToNDP.total_seconds()
                 hours = str(seconds // 3600 % 24).replace(".0","")
                 minutes = str((seconds % 3600) // 60).replace(".0","")
                 seconds = str(math.floor(seconds % 60))
@@ -258,7 +259,7 @@ def reply(update, context):
                 update.message.reply_text('🎉 *Countdown* 🎉\nNext NDP activity: '+countdownToNextStr+'\nNDP 2022: '+countdownToNDPStr, parse_mode='Markdown')
             else:
                 logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get countdown. Please try again later.")
+                update.message.reply_text("Unable to get countdown. Please try again later or type /start to reset")
 
         elif update.message.text=="Daily encouragement":
             if update.message.from_user.username==None:
@@ -266,7 +267,7 @@ def reply(update, context):
             else:
                 logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Daily encouragement')
             link="https://www.sokaglobal.org/resources/daily-encouragement/"
-            today = datetime.now()
+            today = datetime.now(ZoneInfo('Singapore'))
             month=today.strftime("%B").lower()
             link = link + month + "-" + str(today.day) + ".html"
             logging.info(context.user_data["participantCode"]+': Successfully answered question')
