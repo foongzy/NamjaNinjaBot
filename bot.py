@@ -107,6 +107,17 @@ def help(update, context):
     """Send a message when the command /help is issued."""
     update.message.reply_text('Hi '+update.message.from_user.first_name+'! I am NamjaNinja! I can assist you on your SGS NDP 2022 journey!\n\nSend the following commands to get started:\n/start - Lists all the queries I can help you with\n/about - Learn more about me\n/feedback - Tell me how I can improve\n/help - Describes how to use me')
 
+#/share handler
+def share(update, context):
+    if update.message.from_user.username==None:
+        username=""
+        logging.info('Command issued by '+update.message.from_user.first_name+': share')
+    else:
+        username=update.message.from_user.username
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': share')
+    """Send a message when the command /share is issued."""
+    update.message.reply_text('Hello! I am NamjaNinjaBot, a telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants\nhttps://t.me/NamjaNinjabot')
+
 #/about handler
 def about(update, context):
     if update.message.from_user.username==None:
@@ -116,7 +127,7 @@ def about(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': about')
     """Send a message when the command /about is issued."""
-    update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will solely be used to ensure that NamjaNinjaBot is able to function properly and is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
+    update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will solely be used for NamjaNinjaBot performance monitoring and the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
 
 #determine reply after query chosen, ensures participantCode and session token is available
 def reply(update, context):
@@ -393,6 +404,7 @@ def main():
     # on different commands - answer in Telegram
     dp.add_handler(CommandHandler("help", help))
     dp.add_handler(CommandHandler("about", about))
+    dp.add_handler(CommandHandler("share", share))
 
     # handle feedback conversation
     conversation_handler = ConversationHandler(
