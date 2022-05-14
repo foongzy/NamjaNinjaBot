@@ -248,6 +248,7 @@ def reply(update, context):
                     dayStr="Days"
                 countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                 NDPDate=datetime(2022, 9, 9)
+                NDPDate=NDPDate.replace(tzinfo=pytz.timezone('Asia/Singapore'))
                 countdownToNDP=NDPDate-today
                 seconds = countdownToNDP.total_seconds()
                 hours = str(seconds // 3600 % 24).replace(".0","")
