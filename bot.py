@@ -116,7 +116,7 @@ def share(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': share')
     """Send a message when the command /share is issued."""
-    update.message.reply_text('Hello! I am NamjaNinjaBot, a telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants\nhttps://t.me/NamjaNinjabot')
+    update.message.reply_text('Hello! I am NamjaNinjaBot, a telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants:\nhttps://t.me/NamjaNinjabot')
 
 #/about handler
 def about(update, context):
