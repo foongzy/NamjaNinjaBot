@@ -3,14 +3,13 @@ Telegram Bot that provides training information and encouragement to SGS NDP 202
 """
 
 import logging
-import os, time
+import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 import json
 import re
 import requests
 import math
-import pytz
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
@@ -228,7 +227,7 @@ def reply(update, context):
                 for item in dataTrain:
                     if item["datetime_end"]!="TBA":
                         datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                        datetimeInterator=datetimeInterator.replace(tzinfo=pytz.timezone('Asia/Singapore'))
+                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
                         if datetimeInterator > today:
                             difftemp=datetimeInterator-today
                             if daysdiff == "" or difftemp < daysdiff:
@@ -236,7 +235,7 @@ def reply(update, context):
                                 daysdiff=difftemp
                     i=i+1
                 dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                dateToFormat=dateToFormat.replace(tzinfo=pytz.timezone('Asia/Singapore'))
+                dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
                 countdownToNext=dateToFormat-today
                 seconds = countdownToNext.total_seconds()
                 hours = str(seconds // 3600 % 24).replace(".0","")
@@ -248,7 +247,7 @@ def reply(update, context):
                     dayStr="Days"
                 countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                 NDPDate=datetime(2022, 9, 9)
-                NDPDate=NDPDate.replace(tzinfo=pytz.timezone('Asia/Singapore'))
+                NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
                 countdownToNDP=NDPDate-today
                 seconds = countdownToNDP.total_seconds()
                 hours = str(seconds // 3600 % 24).replace(".0","")
