@@ -151,6 +151,7 @@ def reply(update, context):
                 for item in dataTrain:
                     if item["datetime_end"]!="TBA":
                         datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
                         if datetimeInterator > today:
                             difftemp=datetimeInterator-today
                             if daysdiff == "" or difftemp < daysdiff:
@@ -160,6 +161,8 @@ def reply(update, context):
                 # Format Date to Display
                 dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                 dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
+                dateToFormatEnd=dateToFormatEnd.replace(tzinfo=ZoneInfo('Singapore'))
                 # Format reply
                 reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
                 if dataTrain[smallestDateIndex]["Note"]!="Nil":
