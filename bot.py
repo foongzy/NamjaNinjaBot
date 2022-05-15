@@ -71,6 +71,7 @@ def login_step(update, context):
             #got user's session token and participant code. enable user to use the service
             keyboard = [
                 [KeyboardButton("Next NDP activity?")],
+                [KeyboardButton("Show all NDP activities")],
                 [KeyboardButton("Zoom link?")],
                 [KeyboardButton("Countdown")],
                 [KeyboardButton("Daily encouragement")],
@@ -127,7 +128,7 @@ def about(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': about')
     """Send a message when the command /about is issued."""
-    update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will solely be used for NamjaNinjaBot performance monitoring and the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
+    update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will only be used for NamjaNinjaBot performance monitoring and to ensure that the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
 
 #determine reply after query chosen, ensures participantCode and session token is available
 def reply(update, context):
@@ -194,6 +195,58 @@ def reply(update, context):
                 logging.error(context.user_data["participantCode"]+': Failed to get DB data')
                 update.message.reply_text("Unable to get next training details. Please try again later or type /start to reset")
 
+        elif update.message.text=="Show all NDP activities":
+            if update.message.from_user.username==None:
+                logging.info('Question asked by '+update.message.from_user.first_name+': Show all NDP activities')
+            else:
+                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Show all NDP activities')
+            responseTraining=requests.get(urlTrainings, headers=headers)
+            if responseTraining.status_code == 200:
+                data = responseTraining.text
+                dataTrain = json.loads(data)
+
+                today = datetime.now(ZoneInfo('Singapore'))
+                remainingTrain=[]
+                tbaEndTrain=[]
+                for item in dataTrain:
+                    if item["datetime_end"]!="TBA":
+                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
+                        if item["datetime_start"]!="TBA":
+                            datetimeStart=datetime.strptime(item["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                            item["startDate"]= datetimeStart
+                        elif item["datetime_start"]=="TBA":
+                            item["startDate"]= "TBA"
+                        if datetimeInterator > today:
+                            item["endDate"]= datetimeInterator
+                            remainingTrain.append(item)
+                    elif item["datetime_end"]=="TBA":
+                        tbaEndTrain.append(item)
+                #sort by date for activity with end datetime then add TBA trainings at the back
+                sortedRemainingTrain = sorted(remainingTrain, key=lambda d: d['endDate'])
+                sortedRemainingTrain=sortedRemainingTrain+tbaEndTrain
+                # Format reply
+                reply="*NDP Activity Schedule*"
+                i=1
+                for activity in sortedRemainingTrain:
+                    reply=reply+"\n"+str(i)+") "+activity["title"]+": "
+                    if activity["datetime_start"]!="TBA":
+                        reply=reply+activity["startDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
+                    else:
+                        reply=reply+"TBA - "
+                    if activity["datetime_end"]!="TBA":
+                        reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
+                    else:
+                        reply=reply+"TBA"
+                    reply=reply+" @ "+activity["location"]
+                    i=i+1
+                    
+                logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                update.message.reply_text(reply, parse_mode='Markdown')
+            else:
+                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                update.message.reply_text("Unable to get training details. Please try again later or type /start to reset")
+                
         elif update.message.text=="Last updated?":
             if update.message.from_user.username==None:
                 logging.info('Question asked by '+update.message.from_user.first_name+': Last updated?')
@@ -310,7 +363,7 @@ def feedback(update, context):
 
 #feedback: get participant code
 def first_step(update, context):
-    if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?": 
+    if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
         lengthOfFeedback=len(update.message.text)
         if lengthOfFeedback<=500:
             if update.message.from_user.last_name==None:
