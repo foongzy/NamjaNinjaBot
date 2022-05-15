@@ -52,7 +52,7 @@ def login_step(update, context):
         lastname=update.message.from_user.last_name
 
     #check if valid participantCode
-    isValidPartCode = re.match("^[AaBbCcDdEeFf][0-6][0-3][0-9]$", update.message.text)
+    isValidPartCode = re.match("^[AaBbCcDd][1-3][0-2][0-9]$", update.message.text)
     if isValidPartCode:
         partCode=update.message.text.capitalize().strip()
         context.user_data["participantCode"] = partCode
@@ -230,10 +230,14 @@ def reply(update, context):
                 i=1
                 for activity in sortedRemainingTrain:
                     reply=reply+"\n"+str(i)+") "+activity["title"]+": "
-                    if activity["datetime_start"]!="TBA":
-                        reply=reply+activity["startDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
+                    if activity["datetime_end"]!="TBA":
+                        reply=reply+activity["endDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')
                     else:
-                        reply=reply+"TBA - "
+                        reply=reply + "TBA"
+                    if activity["datetime_start"]!="TBA":
+                        reply=reply+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
+                    else:
+                        reply=reply+", TBA - "
                     if activity["datetime_end"]!="TBA":
                         reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
                     else:
