@@ -11,7 +11,7 @@ import re
 import requests
 import math
 
-from telegram import ReplyKeyboardMarkup, KeyboardButton
+from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 TOKEN = os.environ["TOKEN"]
@@ -31,6 +31,7 @@ baseurl = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/'
 #/start handler
 def start(update, context: CallbackContext):
     """Send a message when the command /start is issued."""
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     #reset
     context.user_data.pop('participantCode', None)
     context.user_data.pop('token', None)
@@ -42,6 +43,7 @@ def start(update, context: CallbackContext):
 
 #start: login
 def login_step(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
     else:
@@ -99,6 +101,7 @@ def login_step(update, context):
 
 #/help handler
 def help(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': help')
@@ -110,6 +113,7 @@ def help(update, context):
 
 #/share handler
 def share(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': share')
@@ -121,6 +125,7 @@ def share(update, context):
 
 #/about handler
 def about(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': about')
@@ -132,6 +137,7 @@ def about(update, context):
 
 #determine reply after query chosen, ensures participantCode and session token is available
 def reply(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if 'participantCode' in context.user_data and context.user_data["participantCode"]!="" and 'token' in context.user_data and context.user_data["token"]!="":
         if update.message.from_user.username==None:
             username=""
@@ -353,6 +359,7 @@ def reply(update, context):
 
 #/feedback handler
 def feedback(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     context.user_data["cancelCmd"]="feedback"
     if update.message.from_user.username==None:
         username=""
@@ -367,6 +374,7 @@ def feedback(update, context):
 
 #feedback: get participant code
 def first_step(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
         lengthOfFeedback=len(update.message.text)
         if lengthOfFeedback<=500:
@@ -417,6 +425,7 @@ def first_step(update, context):
 
 #/cancel handler
 def cancel(update, context):
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': cancel')
