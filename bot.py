@@ -399,41 +399,45 @@ def first_step(update, context):
     if update.message.text:
         if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
             lengthOfFeedback=len(update.message.text)
-            if lengthOfFeedback<=500:
-                # if logged in
-                if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
-                    partCode=context.user_data["participantCode"]
-                    url=baseurl+'feedback/'+partCode+'/'
-                else:
-                    partCode=""
-                    url=baseurl+'feedback/nil/'
-                data = {'participantCode': partCode,
-                        'username':username,
-                        'firstname': update.message.from_user.first_name,
-                        'lastname': lastname,
-                        "feedback": update.message.text
-                        }
-                response = requests.post(url, data = data)
-                if response.status_code == 201:
-                    update.message.reply_text("Thank you for your feedback!")
-                    if update.message.from_user.username==None:
-                        logging.info(update.message.from_user.first_name+' successfully submitted feedback')
+            if lengthOfFeedback>5:
+                if lengthOfFeedback<=500:
+                    # if logged in
+                    if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
+                        partCode=context.user_data["participantCode"]
+                        url=baseurl+'feedback/'+partCode+'/'
                     else:
-                        logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
-                    context.user_data.pop('cancelCmd', None)
-                    context.user_data.pop('feedbackTriesNonText', None)
-                    return ConversationHandler.END
-                else:
-                    if update.message.from_user.username==None:
-                        logging.info(update.message.from_user.first_name+' failed to submit feedback')
+                        partCode=""
+                        url=baseurl+'feedback/nil/'
+                    data = {'participantCode': partCode,
+                            'username':username,
+                            'firstname': update.message.from_user.first_name,
+                            'lastname': lastname,
+                            "feedback": update.message.text
+                            }
+                    response = requests.post(url, data = data)
+                    if response.status_code == 201:
+                        update.message.reply_text("Thank you for your feedback!")
+                        if update.message.from_user.username==None:
+                            logging.info(update.message.from_user.first_name+' successfully submitted feedback')
+                        else:
+                            logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
+                        context.user_data.pop('cancelCmd', None)
+                        context.user_data.pop('feedbackTriesNonText', None)
+                        return ConversationHandler.END
                     else:
-                        logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
-                    update.message.reply_text("Failed to submit feedback. Please try again later")
-                    context.user_data.pop('cancelCmd', None)
-                    context.user_data.pop('feedbackTriesNonText', None)
-                    return ConversationHandler.END
+                        if update.message.from_user.username==None:
+                            logging.info(update.message.from_user.first_name+' failed to submit feedback')
+                        else:
+                            logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
+                        update.message.reply_text("Failed to submit feedback. Please try again later")
+                        context.user_data.pop('cancelCmd', None)
+                        context.user_data.pop('feedbackTriesNonText', None)
+                        return ConversationHandler.END
+                else:
+                    update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
+                    return FIRST_STEP
             else:
-                update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
+                update.message.reply_text('Feedback is too short. More details will allow NamjaNinjaBot to understand the issue. Please try again')
                 return FIRST_STEP
         else:
             update.message.reply_text('Feedback cannot be one of the questions that NamjaNinja can help you with. Type /cancel if you want to ask a question instead')
