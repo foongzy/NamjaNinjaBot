@@ -37,13 +37,13 @@ def start(update, context: CallbackContext):
     context.user_data.pop('token', None)
     context.user_data["cancelCmd"]="login"
     context.user_data["loginTries"]=0
+    context.user_data["loginTriesNonText"]=0
     update.message.reply_text("What's your participant code:")
     logging.info('User attempting login: '+update.message.from_user.first_name)
     return LOGIN_STEP
 
 #start: login
 def login_step(update, context):
-    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
     else:
@@ -52,52 +52,61 @@ def login_step(update, context):
         lastname=""
     else:
         lastname=update.message.from_user.last_name
-
-    #check if valid participantCode
-    isValidPartCode = re.match("^[AaBbCcDd][1-3][0-2][0-9]$", update.message.text)
-    if isValidPartCode:
-        partCode=update.message.text.capitalize().strip()
-        context.user_data["participantCode"] = partCode
-        url = baseurl+'user/'+partCode+'/'
-        data = {
-                'participantCode':partCode,
-                'username':username,
-                'firstname': update.message.from_user.first_name,
-                'lastname': lastname
-        }
-        response = requests.post(url, data = data)
-        data = response.text
-        parse_json = json.loads(data)
-        context.user_data["token"] = parse_json['token']
-        if response.status_code == 200:
-            #got user's session token and participant code. enable user to use the service
-            keyboard = [
-                [KeyboardButton("Next NDP activity?")],
-                [KeyboardButton("Show all NDP activities")],
-                [KeyboardButton("Zoom link?")],
-                [KeyboardButton("Countdown")],
-                [KeyboardButton("Daily encouragement")],
-                [KeyboardButton("Last updated?")],
-            ]
-            reply_markup = ReplyKeyboardMarkup(keyboard)
-            context.user_data.pop('cancelCmd', None)
-            context.user_data.pop('loginTries', None)
-            logging.info('Successful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
-            update.message.reply_text('Please select your query:', reply_markup=reply_markup)
-            return ConversationHandler.END
+    context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
+    if update.message.text:
+        #check if valid participantCode
+        isValidPartCode = re.match("^[AaBbCcDd][1-3][0-2][0-9]$", update.message.text)
+        if isValidPartCode:
+            partCode=update.message.text.capitalize().strip()
+            context.user_data["participantCode"] = partCode
+            url = baseurl+'user/'+partCode+'/'
+            data = {
+                    'participantCode':partCode,
+                    'username':username,
+                    'firstname': update.message.from_user.first_name,
+                    'lastname': lastname
+            }
+            response = requests.post(url, data = data)
+            data = response.text
+            parse_json = json.loads(data)
+            context.user_data["token"] = parse_json['token']
+            if response.status_code == 200:
+                #got user's session token and participant code. enable user to use the service
+                keyboard = [
+                    [KeyboardButton("Next NDP activity?")],
+                    [KeyboardButton("Show all NDP activities")],
+                    [KeyboardButton("Zoom link?")],
+                    [KeyboardButton("Countdown")],
+                    [KeyboardButton("Daily encouragement")],
+                    [KeyboardButton("Last updated?")],
+                ]
+                reply_markup = ReplyKeyboardMarkup(keyboard)
+                context.user_data.pop('cancelCmd', None)
+                context.user_data.pop('loginTries', None)
+                context.user_data.pop('loginTriesNonText', None)
+                logging.info('Successful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
+                update.message.reply_text('Please select your query:', reply_markup=reply_markup)
+                return ConversationHandler.END
+            else:
+                context.user_data.pop('cancelCmd', None)
+                context.user_data.pop('loginTries', None)
+                context.user_data.pop('loginTriesNonText', None)
+                logging.error('Unsuccessful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
+                update.message.reply_text('Unable to process request at this time. Please try again later')
+                return ConversationHandler.END
         else:
-            context.user_data.pop('cancelCmd', None)
-            context.user_data.pop('loginTries', None)
-            logging.error('Unsuccessful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
-            update.message.reply_text('Unable to process request at this time. Please try again later')
-            return ConversationHandler.END
+            if context.user_data["loginTries"]>=3:
+                update.message.reply_text('You can type /cancel to exit')
+                logging.warning(update.message.from_user.first_name+' ('+username+') failed to login '+str(context.user_data["loginTries"])+' times')
+            context.user_data["loginTries"]=context.user_data["loginTries"]+1
+            update.message.reply_text('Invalid participant code. Please try again:')
+            return LOGIN_STEP
     else:
-        if context.user_data["loginTries"]>=3:
+        if context.user_data["loginTriesNonText"]>=3:
             update.message.reply_text('You can type /cancel to exit')
-            logging.warning(update.message.from_user.first_name+' ('+username+') failed to login '+str(context.user_data["loginTries"])+' times')
-        context.user_data["loginTries"]=context.user_data["loginTries"]+1
-        update.message.reply_text('Invalid participant code. Please try again:')
-        return LOGIN_STEP
+        context.user_data["loginTriesNonText"]=context.user_data["loginTriesNonText"]+1
+        logging.warning(update.message.from_user.first_name+' ('+username+') gave non-text reply on login')
+        update.message.reply_text('Input should be a text message. Please try again')
 
 #/help handler
 def help(update, context):
@@ -139,219 +148,222 @@ def about(update, context):
 def reply(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if 'participantCode' in context.user_data and context.user_data["participantCode"]!="" and 'token' in context.user_data and context.user_data["token"]!="":
-        if update.message.from_user.username==None:
-            username=""
-        else:
-            username=update.message.from_user.username
-        urlDets = baseurl+'details/'+context.user_data["participantCode"]+"/1/"
-        urlTrainings = baseurl+'training/'+context.user_data["participantCode"]+"/1/"
-        headers = {
-            "token":context.user_data["token"]
-        }
-        if update.message.text=="Next NDP activity?":
+        if update.message.text:
             if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Next NDP activity?')
+                username=""
             else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Next NDP activity?')
-            # Find next NDP activity
-            responseDets=requests.get(urlDets, headers=headers)
-            responseTraining=requests.get(urlTrainings, headers=headers)
-            if responseDets.status_code == 200 and responseTraining.status_code == 200:
-                data = responseDets.text
-                dataDets = json.loads(data)
-                data = responseTraining.text
-                dataTrain = json.loads(data)
+                username=update.message.from_user.username
+            urlDets = baseurl+'details/'+context.user_data["participantCode"]+"/1/"
+            urlTrainings = baseurl+'training/'+context.user_data["participantCode"]+"/1/"
+            headers = {
+                "token":context.user_data["token"]
+            }
+            if update.message.text=="Next NDP activity?":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Next NDP activity?')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Next NDP activity?')
+                # Find next NDP activity
+                responseDets=requests.get(urlDets, headers=headers)
+                responseTraining=requests.get(urlTrainings, headers=headers)
+                if responseDets.status_code == 200 and responseTraining.status_code == 200:
+                    data = responseDets.text
+                    dataDets = json.loads(data)
+                    data = responseTraining.text
+                    dataTrain = json.loads(data)
 
-                today = datetime.now(ZoneInfo('Singapore'))
-                daysdiff=""
-                smallestDateIndex=""
-                i=0
-                for item in dataTrain:
-                    if item["datetime_end"]!="TBA":
-                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
-                        if datetimeInterator > today:
-                            difftemp=datetimeInterator-today
-                            if daysdiff == "" or difftemp < daysdiff:
-                                smallestDateIndex=i
-                                daysdiff=difftemp
-                    i=i+1
-                # Format Date to Display
-                dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
-                dateToFormatEnd=dateToFormatEnd.replace(tzinfo=ZoneInfo('Singapore'))
-                # Format reply
-                reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
-                if dataTrain[smallestDateIndex]["Note"]!="Nil":
-                    reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
-                if dataTrain[smallestDateIndex]["location"]=="Zoom":
-                    reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
-                if dataTrain[smallestDateIndex]["title"]=="NDP Training":
-                    reply=reply+"\n\n"+"Attire: "
-                    for i in range(0, len(dataDets["training_attire"])):
-                        reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
-                    if dataTrain[smallestDateIndex]["location"]=="Keat Hong Camp":
-                        reply=reply+"\n"+"Things to Bring: "
-                        for i in range(0, len(dataDets["training_bring"])):
-                            reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
-                logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                update.message.reply_text(reply, parse_mode='Markdown')
-            else:
-                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get next training details. Please try again later or type /start to reset")
+                    today = datetime.now(ZoneInfo('Singapore'))
+                    daysdiff=""
+                    smallestDateIndex=""
+                    i=0
+                    for item in dataTrain:
+                        if item["datetime_end"]!="TBA":
+                            datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                            datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
+                            if datetimeInterator > today:
+                                difftemp=datetimeInterator-today
+                                if daysdiff == "" or difftemp < daysdiff:
+                                    smallestDateIndex=i
+                                    daysdiff=difftemp
+                        i=i+1
+                    # Format Date to Display
+                    dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                    dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                    dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
+                    dateToFormatEnd=dateToFormatEnd.replace(tzinfo=ZoneInfo('Singapore'))
+                    # Format reply
+                    reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
+                    if dataTrain[smallestDateIndex]["Note"]!="Nil":
+                        reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
+                    if dataTrain[smallestDateIndex]["location"]=="Zoom":
+                        reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
+                    if dataTrain[smallestDateIndex]["title"]=="NDP Training":
+                        reply=reply+"\n\n"+"Attire: "
+                        for i in range(0, len(dataDets["training_attire"])):
+                            reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
+                        if dataTrain[smallestDateIndex]["location"]=="Keat Hong Camp":
+                            reply=reply+"\n"+"Things to Bring: "
+                            for i in range(0, len(dataDets["training_bring"])):
+                                reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
+                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                    update.message.reply_text(reply, parse_mode='Markdown')
+                else:
+                    logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                    update.message.reply_text("Unable to get next training details. Please try again later or type /start to reset")
 
-        elif update.message.text=="Show all NDP activities":
-            if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Show all NDP activities')
-            else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Show all NDP activities')
-            responseTraining=requests.get(urlTrainings, headers=headers)
-            if responseTraining.status_code == 200:
-                data = responseTraining.text
-                dataTrain = json.loads(data)
+            elif update.message.text=="Show all NDP activities":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Show all NDP activities')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Show all NDP activities')
+                responseTraining=requests.get(urlTrainings, headers=headers)
+                if responseTraining.status_code == 200:
+                    data = responseTraining.text
+                    dataTrain = json.loads(data)
 
-                today = datetime.now(ZoneInfo('Singapore'))
-                remainingTrain=[]
-                tbaEndTrain=[]
-                for item in dataTrain:
-                    if item["datetime_end"]!="TBA":
-                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
-                        if item["datetime_start"]!="TBA":
-                            datetimeStart=datetime.strptime(item["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                            item["startDate"]= datetimeStart
-                        elif item["datetime_start"]=="TBA":
-                            item["startDate"]= "TBA"
-                        if datetimeInterator > today:
-                            item["endDate"]= datetimeInterator
-                            remainingTrain.append(item)
-                    elif item["datetime_end"]=="TBA":
-                        tbaEndTrain.append(item)
-                #sort by date for activity with end datetime then add TBA trainings at the back
-                sortedRemainingTrain = sorted(remainingTrain, key=lambda d: d['endDate'])
-                sortedRemainingTrain=sortedRemainingTrain+tbaEndTrain
-                # Format reply
-                reply="*NDP Activity Schedule*"
-                i=1
-                for activity in sortedRemainingTrain:
-                    reply=reply+"\n"+str(i)+") "+activity["title"]+": "
-                    if activity["datetime_end"]!="TBA":
-                        reply=reply+activity["endDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')
-                    else:
-                        reply=reply + "TBA"
-                    if activity["datetime_start"]!="TBA":
-                        reply=reply+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
-                    else:
-                        reply=reply+", TBA - "
-                    if activity["datetime_end"]!="TBA":
-                        reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
-                    else:
-                        reply=reply+"TBA"
-                    reply=reply+" @ "+activity["location"]
-                    i=i+1
+                    today = datetime.now(ZoneInfo('Singapore'))
+                    remainingTrain=[]
+                    tbaEndTrain=[]
+                    for item in dataTrain:
+                        if item["datetime_end"]!="TBA":
+                            datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                            datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
+                            if item["datetime_start"]!="TBA":
+                                datetimeStart=datetime.strptime(item["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                                item["startDate"]= datetimeStart
+                            elif item["datetime_start"]=="TBA":
+                                item["startDate"]= "TBA"
+                            if datetimeInterator > today:
+                                item["endDate"]= datetimeInterator
+                                remainingTrain.append(item)
+                        elif item["datetime_end"]=="TBA":
+                            tbaEndTrain.append(item)
+                    #sort by date for activity with end datetime then add TBA trainings at the back
+                    sortedRemainingTrain = sorted(remainingTrain, key=lambda d: d['endDate'])
+                    sortedRemainingTrain=sortedRemainingTrain+tbaEndTrain
+                    # Format reply
+                    reply="*NDP Activity Schedule*"
+                    i=1
+                    for activity in sortedRemainingTrain:
+                        reply=reply+"\n"+str(i)+") "+activity["title"]+": "
+                        if activity["datetime_end"]!="TBA":
+                            reply=reply+activity["endDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')
+                        else:
+                            reply=reply + "TBA"
+                        if activity["datetime_start"]!="TBA":
+                            reply=reply+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
+                        else:
+                            reply=reply+", TBA - "
+                        if activity["datetime_end"]!="TBA":
+                            reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
+                        else:
+                            reply=reply+"TBA"
+                        reply=reply+" @ "+activity["location"]
+                        i=i+1
+                        
+                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                    update.message.reply_text(reply, parse_mode='Markdown')
+                else:
+                    logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                    update.message.reply_text("Unable to get training details. Please try again later or type /start to reset")
                     
-                logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                update.message.reply_text(reply, parse_mode='Markdown')
-            else:
-                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get training details. Please try again later or type /start to reset")
-                
-        elif update.message.text=="Last updated?":
-            if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Last updated?')
-            else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Last updated?')
-            response=requests.get(urlDets, headers=headers)
-            if response.status_code == 200:
-                data = response.text
-                parse_json = json.loads(data)
-                logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                update.message.reply_text("The training schedule for the bot was last updated on: "+parse_json["lastupdate"])
-            else:
-                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get training schedule last updated details. Please try again later or type /start to reset")
+            elif update.message.text=="Last updated?":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Last updated?')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Last updated?')
+                response=requests.get(urlDets, headers=headers)
+                if response.status_code == 200:
+                    data = response.text
+                    parse_json = json.loads(data)
+                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                    update.message.reply_text("The training schedule for the bot was last updated on: "+parse_json["lastupdate"])
+                else:
+                    logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                    update.message.reply_text("Unable to get training schedule last updated details. Please try again later or type /start to reset")
 
-        elif update.message.text=="Zoom link?":
-            if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Zoom link?')
-            else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Zoom link?')
-            response=requests.get(urlDets, headers=headers)
-            if response.status_code == 200:
-                data = response.text
-                parse_json = json.loads(data)
-                logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                update.message.reply_text("Zoom Link: "+parse_json["zoomlink"])
-            else:
-                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get zoom link. Please try again later or type /start to reset")
+            elif update.message.text=="Zoom link?":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Zoom link?')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Zoom link?')
+                response=requests.get(urlDets, headers=headers)
+                if response.status_code == 200:
+                    data = response.text
+                    parse_json = json.loads(data)
+                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                    update.message.reply_text("Zoom Link: "+parse_json["zoomlink"])
+                else:
+                    logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                    update.message.reply_text("Unable to get zoom link. Please try again later or type /start to reset")
 
-        elif update.message.text=="Countdown":
-            if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Countdown')
-            else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Countdown')
-            # Find next NDP activity
-            responseTraining=requests.get(urlTrainings, headers=headers)
-            if responseTraining.status_code == 200:
-                data = responseTraining.text
-                dataTrain = json.loads(data)
+            elif update.message.text=="Countdown":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Countdown')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Countdown')
+                # Find next NDP activity
+                responseTraining=requests.get(urlTrainings, headers=headers)
+                if responseTraining.status_code == 200:
+                    data = responseTraining.text
+                    dataTrain = json.loads(data)
+                    today = datetime.now(ZoneInfo('Singapore'))
+                    daysdiff=""
+                    smallestDateIndex=""
+                    i=0
+                    for item in dataTrain:
+                        if item["datetime_end"]!="TBA":
+                            datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                            datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
+                            if datetimeInterator > today:
+                                difftemp=datetimeInterator-today
+                                if daysdiff == "" or difftemp < daysdiff:
+                                    smallestDateIndex=i
+                                    daysdiff=difftemp
+                        i=i+1
+                    dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                    dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
+                    countdownToNext=dateToFormat-today
+                    seconds = countdownToNext.total_seconds()
+                    hours = str(seconds // 3600 % 24).replace(".0","")
+                    minutes = str((seconds % 3600) // 60).replace(".0","")
+                    seconds = str(math.floor(seconds % 60))
+                    if countdownToNext.days==1:
+                        dayStr="Day"
+                    else:
+                        dayStr="Days"
+                    countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                    NDPDate=datetime(2022, 9, 9)
+                    NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
+                    countdownToNDP=NDPDate-today
+                    seconds = countdownToNDP.total_seconds()
+                    hours = str(seconds // 3600 % 24).replace(".0","")
+                    minutes = str((seconds % 3600) // 60).replace(".0","")
+                    seconds = str(math.floor(seconds % 60))
+                    if countdownToNDP.days==1:
+                        dayStr="Day"
+                    else:
+                        dayStr="Days"
+                    countdownToNDPStr=str(countdownToNDP.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                    update.message.reply_text('🎉 *Countdown* 🎉\nNext NDP activity: '+countdownToNextStr+'\nNDP 2022: '+countdownToNDPStr, parse_mode='Markdown')
+                else:
+                    logging.error(context.user_data["participantCode"]+': Failed to get DB data')
+                    update.message.reply_text("Unable to get countdown. Please try again later or type /start to reset")
+
+            elif update.message.text=="Daily encouragement":
+                if update.message.from_user.username==None:
+                    logging.info('Question asked by '+update.message.from_user.first_name+': Daily encouragement')
+                else:
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Daily encouragement')
+                link="https://www.sokaglobal.org/resources/daily-encouragement/"
                 today = datetime.now(ZoneInfo('Singapore'))
-                daysdiff=""
-                smallestDateIndex=""
-                i=0
-                for item in dataTrain:
-                    if item["datetime_end"]!="TBA":
-                        datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                        datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
-                        if datetimeInterator > today:
-                            difftemp=datetimeInterator-today
-                            if daysdiff == "" or difftemp < daysdiff:
-                                smallestDateIndex=i
-                                daysdiff=difftemp
-                    i=i+1
-                dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
-                countdownToNext=dateToFormat-today
-                seconds = countdownToNext.total_seconds()
-                hours = str(seconds // 3600 % 24).replace(".0","")
-                minutes = str((seconds % 3600) // 60).replace(".0","")
-                seconds = str(math.floor(seconds % 60))
-                if countdownToNext.days==1:
-                    dayStr="Day"
-                else:
-                    dayStr="Days"
-                countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
-                NDPDate=datetime(2022, 9, 9)
-                NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
-                countdownToNDP=NDPDate-today
-                seconds = countdownToNDP.total_seconds()
-                hours = str(seconds // 3600 % 24).replace(".0","")
-                minutes = str((seconds % 3600) // 60).replace(".0","")
-                seconds = str(math.floor(seconds % 60))
-                if countdownToNDP.days==1:
-                    dayStr="Day"
-                else:
-                    dayStr="Days"
-                countdownToNDPStr=str(countdownToNDP.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                month=today.strftime("%B").lower()
+                link = link + month + "-" + str(today.day) + ".html"
                 logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                update.message.reply_text('🎉 *Countdown* 🎉\nNext NDP activity: '+countdownToNextStr+'\nNDP 2022: '+countdownToNDPStr, parse_mode='Markdown')
+                update.message.reply_text(link)  
             else:
-                logging.error(context.user_data["participantCode"]+': Failed to get DB data')
-                update.message.reply_text("Unable to get countdown. Please try again later or type /start to reset")
-
-        elif update.message.text=="Daily encouragement":
-            if update.message.from_user.username==None:
-                logging.info('Question asked by '+update.message.from_user.first_name+': Daily encouragement')
-            else:
-                logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Daily encouragement')
-            link="https://www.sokaglobal.org/resources/daily-encouragement/"
-            today = datetime.now(ZoneInfo('Singapore'))
-            month=today.strftime("%B").lower()
-            link = link + month + "-" + str(today.day) + ".html"
-            logging.info(context.user_data["participantCode"]+': Successfully answered question')
-            update.message.reply_text(link)  
+                update.message.reply_text('Please select a valid question or type /help')
         else:
             update.message.reply_text('Please select a valid question or type /help')
     else:
@@ -361,6 +373,7 @@ def reply(update, context):
 def feedback(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     context.user_data["cancelCmd"]="feedback"
+    context.user_data["feedbackTriesNonText"]=0
     if update.message.from_user.username==None:
         username=""
         logging.info('Command issued by '+update.message.from_user.first_name+': feedback')
@@ -375,53 +388,62 @@ def feedback(update, context):
 #feedback: get participant code
 def first_step(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
-    if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
-        lengthOfFeedback=len(update.message.text)
-        if lengthOfFeedback<=500:
-            if update.message.from_user.last_name==None:
-                lastname=""
-            else:
-                lastname=update.message.from_user.last_name
-            if update.message.from_user.username==None:
-                username=""
-            else:
-                username=update.message.from_user.username
-            # if logged in
-            if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
-                partCode=context.user_data["participantCode"]
-                url=baseurl+'feedback/'+partCode+'/'
-            else:
-                partCode=""
-                url=baseurl+'feedback/nil/'
-            data = {'participantCode': partCode,
-                    'username':username,
-                    'firstname': update.message.from_user.first_name,
-                    'lastname': lastname,
-                    "feedback": update.message.text
-                    }
-            response = requests.post(url, data = data)
-            if response.status_code == 201:
-                update.message.reply_text("Thank you for your feedback!")
-                if update.message.from_user.username==None:
-                    logging.info(update.message.from_user.first_name+' successfully submitted feedback')
+    if update.message.from_user.last_name==None:
+        lastname=""
+    else:
+        lastname=update.message.from_user.last_name
+    if update.message.from_user.username==None:
+        username=""
+    else:
+        username=update.message.from_user.username
+    if update.message.text:
+        if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
+            lengthOfFeedback=len(update.message.text)
+            if lengthOfFeedback<=500:
+                # if logged in
+                if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
+                    partCode=context.user_data["participantCode"]
+                    url=baseurl+'feedback/'+partCode+'/'
                 else:
-                    logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
-                context.user_data.pop('cancelCmd', None)
-                return ConversationHandler.END
-            else:
-                if update.message.from_user.username==None:
-                    logging.info(update.message.from_user.first_name+' failed to submit feedback')
+                    partCode=""
+                    url=baseurl+'feedback/nil/'
+                data = {'participantCode': partCode,
+                        'username':username,
+                        'firstname': update.message.from_user.first_name,
+                        'lastname': lastname,
+                        "feedback": update.message.text
+                        }
+                response = requests.post(url, data = data)
+                if response.status_code == 201:
+                    update.message.reply_text("Thank you for your feedback!")
+                    if update.message.from_user.username==None:
+                        logging.info(update.message.from_user.first_name+' successfully submitted feedback')
+                    else:
+                        logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
+                    context.user_data.pop('cancelCmd', None)
+                    context.user_data.pop('feedbackTriesNonText', None)
+                    return ConversationHandler.END
                 else:
-                    logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
-                update.message.reply_text("Failed to submit feedback. Please try again later")
-                context.user_data.pop('cancelCmd', None)
-                return ConversationHandler.END
+                    if update.message.from_user.username==None:
+                        logging.info(update.message.from_user.first_name+' failed to submit feedback')
+                    else:
+                        logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
+                    update.message.reply_text("Failed to submit feedback. Please try again later")
+                    context.user_data.pop('cancelCmd', None)
+                    context.user_data.pop('feedbackTriesNonText', None)
+                    return ConversationHandler.END
+            else:
+                update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
+                return FIRST_STEP
         else:
-            update.message.reply_text('Feedback is too long. It should be less than 500 characters. The submitted feedback was '+str(lengthOfFeedback)+' characters long. Please try again')
+            update.message.reply_text('Feedback cannot be one of the questions that NamjaNinja can help you with. Type /cancel if you want to ask a question instead')
             return FIRST_STEP
     else:
-        update.message.reply_text('Feedback cannot be one of the questions that NamjaNinja can help you with. Type /cancel if you want to ask a question instead')
-        return FIRST_STEP
+        if context.user_data["feedbackTriesNonText"]>=3:
+            update.message.reply_text('You can type /cancel to exit')
+        context.user_data["feedbackTriesNonText"]=context.user_data["feedbackTriesNonText"]+1
+        logging.info(update.message.from_user.first_name+' ('+username+') gave non-text reply on feedback')
+        update.message.reply_text('Input should be a text message. Please try again')
 
 #/cancel handler
 def cancel(update, context):
@@ -433,8 +455,10 @@ def cancel(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': cancel')
     if context.user_data["cancelCmd"]=="feedback":
+        context.user_data.pop('feedbackTriesNonText', None)
         update.message.reply_text("Cancelled feedback submission")
     elif context.user_data["cancelCmd"]=="login":
+        context.user_data.pop('loginTriesNonText', None)
         context.user_data.pop('loginTries', None)
         update.message.reply_text("Cancelled process")
     else:
@@ -461,7 +485,7 @@ def main():
     conversation_handlerLogin = ConversationHandler(
         entry_points=[CommandHandler('start', start)],
         states={
-            LOGIN_STEP: [MessageHandler(Filters.text & ~Filters.command, login_step)],
+            LOGIN_STEP: [MessageHandler(~Filters.command, login_step)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
@@ -476,14 +500,14 @@ def main():
     conversation_handler = ConversationHandler(
         entry_points=[CommandHandler('feedback', feedback)],
         states={
-            FIRST_STEP: [MessageHandler(Filters.text & ~Filters.command, first_step)],
+            FIRST_STEP: [MessageHandler(~Filters.command, first_step)],
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
     dp.add_handler(conversation_handler)
 
     # on noncommand i.e message - reply the message on Telegram
-    dp.add_handler(MessageHandler(Filters.text, reply))
+    dp.add_handler(MessageHandler(~Filters.command, reply))
 
     # log all errors
     dp.add_error_handler(error)
