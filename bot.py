@@ -136,7 +136,7 @@ def share(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): share')
     """Send a message when the command /share is issued."""
-    update.message.reply_text('Hello! I am NamjaNinjaBot, a telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants:\nhttps://t.me/NamjaNinjabot')
+    update.message.reply_text('Hello! I am NamjaNinjaBot, a Telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants:\nhttps://t.me/NamjaNinjabot')
 
 #/about handler
 def about(update, context):
@@ -148,7 +148,7 @@ def about(update, context):
         username=update.message.from_user.username
         logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): about')
     """Send a message when the command /about is issued."""
-    update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will only be used for NamjaNinjaBot performance monitoring and to ensure that the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
+    update.message.reply_text('*About*\nNamjaNinjaBot is a Telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will only be used for NamjaNinjaBot performance monitoring and to ensure that the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
 
 #determine reply after query chosen, ensures participantCode and session token is available
 def reply(update, context):
