@@ -36,10 +36,9 @@ def start(update, context: CallbackContext):
     context.user_data.pop('participantCode', None)
     context.user_data.pop('token', None)
     context.user_data["cancelCmd"]="login"
-    context.user_data["loginTries"]=0
     context.user_data["loginTriesNonText"]=0
     update.message.reply_text("What's your participant code:")
-    logging.info('User attempting login: '+update.message.from_user.first_name)
+    logging.info('User attempting login: '+update.message.from_user.first_name+ ' ('+str(update.message.from_user.id)+')')
     return LOGIN_STEP
 
 #start: login
@@ -54,24 +53,26 @@ def login_step(update, context):
         lastname=update.message.from_user.last_name
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.text:
-        #check if valid participantCode
-        isValidPartCode = re.match("^[AaBbCcDd][1-3][0-2][0-9]$", update.message.text)
-        if isValidPartCode:
-            partCode=update.message.text.capitalize().strip()
-            context.user_data["participantCode"] = partCode
-            url = baseurl+'user/'+partCode+'/'
-            data = {
-                    'participantCode':partCode,
-                    'username':username,
-                    'firstname': update.message.from_user.first_name,
-                    'lastname': lastname
-            }
-            response = requests.post(url, data = data)
+        partCode=update.message.text.capitalize().strip()
+        telegramid=str(update.message.from_user.id)
+        url = baseurl+'user/'+partCode+'/'+telegramid+'/'
+        data = {
+            'telegramId':telegramid,
+            'participantCode':partCode,
+            'username':username,
+            'firstname': update.message.from_user.first_name,
+            'lastname': lastname
+        }
+        response = requests.post(url, data = data)
+        if response.status_code == 200:
             data = response.text
             parse_json = json.loads(data)
-            context.user_data["token"] = parse_json['token']
-            if response.status_code == 200:
+            if parse_json['token']!="":
+                #successful login
                 #got user's session token and participant code. enable user to use the service
+                context.user_data["token"] = parse_json['token']
+                context.user_data["participantCode"] = partCode
+                #show questions
                 keyboard = [
                     [KeyboardButton("Next NDP activity?")],
                     [KeyboardButton("Show all NDP activities")],
@@ -82,30 +83,35 @@ def login_step(update, context):
                 ]
                 reply_markup = ReplyKeyboardMarkup(keyboard)
                 context.user_data.pop('cancelCmd', None)
-                context.user_data.pop('loginTries', None)
                 context.user_data.pop('loginTriesNonText', None)
-                logging.info('Successful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
+                logging.info('Successful login by '+telegramid+' ('+username+", "+ partCode+')')
                 update.message.reply_text('Please select your query:', reply_markup=reply_markup)
                 return ConversationHandler.END
             else:
-                context.user_data.pop('cancelCmd', None)
-                context.user_data.pop('loginTries', None)
-                context.user_data.pop('loginTriesNonText', None)
-                logging.error('Unsuccessful login by '+update.message.from_user.first_name+' ('+username+", "+ partCode+')')
-                update.message.reply_text('Unable to process request at this time. Please try again later')
-                return ConversationHandler.END
+                #failed login
+                if parse_json['loginAttempts']>=3:
+                    update.message.reply_text('You can type /cancel to exit')
+                    logging.warning(telegramid+' ('+username+') failed to login '+str(parse_json['loginAttempts'])+' times')
+                update.message.reply_text('Invalid participant code. Please try again:')
+                return LOGIN_STEP
+        elif response.status_code == 423:
+            #Account blocked
+            logging.info('Blocked account: '+telegramid+' ('+username+", "+ partCode+')')
+            update.message.reply_text("Sorry, your account has been blocked from using NamjaNinjaBot due to repeated failed login attempts. Please type /feedback to submit a request for the account to be unblocked if you are a legitimate NDP 2022 SGS participant")
+            return ConversationHandler.END
         else:
-            if context.user_data["loginTries"]>=3:
-                update.message.reply_text('You can type /cancel to exit')
-                logging.warning(update.message.from_user.first_name+' ('+username+') failed to login '+str(context.user_data["loginTries"])+' times')
-            context.user_data["loginTries"]=context.user_data["loginTries"]+1
-            update.message.reply_text('Invalid participant code. Please try again:')
-            return LOGIN_STEP
+            #bad requests
+            context.user_data.pop('cancelCmd', None)
+            context.user_data.pop('loginTriesNonText', None)
+            logging.error('Unsuccessful login by '+telegramid+' ('+username+", "+ partCode+')')
+            update.message.reply_text('Unable to process request at this time. Please try again later')
+            return ConversationHandler.END
     else:
+        #Non-text input during login
         if context.user_data["loginTriesNonText"]>=3:
             update.message.reply_text('You can type /cancel to exit')
         context.user_data["loginTriesNonText"]=context.user_data["loginTriesNonText"]+1
-        logging.warning(update.message.from_user.first_name+' ('+username+') gave non-text reply on login')
+        logging.warning(str(update.message.from_user.id)+' ('+username+') gave non-text reply on login')
         update.message.reply_text('Input should be a text message. Please try again')
 
 #/help handler
@@ -113,10 +119,10 @@ def help(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
-        logging.info('Command issued by '+update.message.from_user.first_name+': help')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+str(update.message.from_user.id)+'): help')
     else:
         username=update.message.from_user.username
-        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': help')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): help')
     """Send a message when the command /help is issued."""
     update.message.reply_text('Hi '+update.message.from_user.first_name+'! I am NamjaNinja! I can assist you on your SGS NDP 2022 journey!\n\nSend the following commands to get started:\n/start - Lists all the queries I can help you with\n/about - Learn more about me\n/feedback - Tell me how I can improve\n/help - Describes how to use me\n/share - Share me with your fellow participants')
 
@@ -125,10 +131,10 @@ def share(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
-        logging.info('Command issued by '+update.message.from_user.first_name+': share')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+str(update.message.from_user.id)+'): share')
     else:
         username=update.message.from_user.username
-        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': share')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): share')
     """Send a message when the command /share is issued."""
     update.message.reply_text('Hello! I am NamjaNinjaBot, a telegram Bot that can provide training information and encouragement to SGS NDP 2022 participants:\nhttps://t.me/NamjaNinjabot')
 
@@ -137,10 +143,10 @@ def about(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
-        logging.info('Command issued by '+update.message.from_user.first_name+': about')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+str(update.message.from_user.id)+'): about')
     else:
         username=update.message.from_user.username
-        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': about')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): about')
     """Send a message when the command /about is issued."""
     update.message.reply_text('*About*\nNamjaNinjaBot is a telegram bot that is aimed at allowing Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly. Participants can also get daily encouragements through the bot\n\n*Disclaimer*\nThis bot was created in good faith by one of the participants to be a handy companion to the participants and should strictly be used for such purposes only. By using NamjaNinjaBot, you agree to the collection of user data that will only be used for NamjaNinjaBot performance monitoring and to ensure that the bot is used for its intended purpose only. Thank you for your understanding', parse_mode='Markdown')
 
@@ -153,16 +159,17 @@ def reply(update, context):
                 username=""
             else:
                 username=update.message.from_user.username
-            urlDets = baseurl+'details/'+context.user_data["participantCode"]+"/1/"
-            urlTrainings = baseurl+'training/'+context.user_data["participantCode"]+"/1/"
+            telegramid=str(update.message.from_user.id)
+            urlDets = baseurl+'details/'+context.user_data["participantCode"]+'/'+telegramid+"/1/"
+            urlTrainings = baseurl+'training/'+context.user_data["participantCode"]+'/'+telegramid+"/1/"
             headers = {
                 "token":context.user_data["token"]
             }
             if update.message.text=="Next NDP activity?":
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Next NDP activity?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Next NDP activity?')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Next NDP activity?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Next NDP activity?')
                 # Find next NDP activity
                 responseDets=requests.get(urlDets, headers=headers)
                 responseTraining=requests.get(urlTrainings, headers=headers)
@@ -213,9 +220,9 @@ def reply(update, context):
 
             elif update.message.text=="Show all NDP activities":
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Show all NDP activities')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Show all NDP activities')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Show all NDP activities')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Show all NDP activities')
                 responseTraining=requests.get(urlTrainings, headers=headers)
                 if responseTraining.status_code == 200:
                     data = responseTraining.text
@@ -268,10 +275,11 @@ def reply(update, context):
                     update.message.reply_text("Unable to get training details. Please try again later or type /start to reset")
                     
             elif update.message.text=="Last updated?":
+                #returns when training schedule last updated
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Last updated?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Last updated?')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Last updated?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Last updated?')
                 response=requests.get(urlDets, headers=headers)
                 if response.status_code == 200:
                     data = response.text
@@ -283,10 +291,11 @@ def reply(update, context):
                     update.message.reply_text("Unable to get training schedule last updated details. Please try again later or type /start to reset")
 
             elif update.message.text=="Zoom link?":
+                #returns zoom link used for meetings
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Zoom link?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Zoom link?')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Zoom link?')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Zoom link?')
                 response=requests.get(urlDets, headers=headers)
                 if response.status_code == 200:
                     data = response.text
@@ -298,10 +307,11 @@ def reply(update, context):
                     update.message.reply_text("Unable to get zoom link. Please try again later or type /start to reset")
 
             elif update.message.text=="Countdown":
+                #returns countdown to next NDP activity and NDP 2022
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Countdown')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Countdown')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Countdown')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Countdown')
                 # Find next NDP activity
                 responseTraining=requests.get(urlTrainings, headers=headers)
                 if responseTraining.status_code == 200:
@@ -352,10 +362,11 @@ def reply(update, context):
                     update.message.reply_text("Unable to get countdown. Please try again later or type /start to reset")
 
             elif update.message.text=="Daily encouragement":
+                #returns daily encouragement
                 if update.message.from_user.username==None:
-                    logging.info('Question asked by '+update.message.from_user.first_name+': Daily encouragement')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+telegramid+'): Daily encouragement')
                 else:
-                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+') '+': Daily encouragement')
+                    logging.info('Question asked by '+update.message.from_user.first_name+' ('+username+', '+telegramid+'): Daily encouragement')
                 link="https://www.sokaglobal.org/resources/daily-encouragement/"
                 today = datetime.now(ZoneInfo('Singapore'))
                 month=today.strftime("%B").lower()
@@ -376,18 +387,19 @@ def feedback(update, context):
     context.user_data["feedbackTriesNonText"]=0
     if update.message.from_user.username==None:
         username=""
-        logging.info('Command issued by '+update.message.from_user.first_name+': feedback')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+str(update.message.from_user.id)+'): feedback')
     else:
         username=update.message.from_user.username
-        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': feedback')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): feedback')
     """Send a message when the command /feedback is issued."""
     update.message.reply_text('NamjaNinjaBot will listen to all feedback. Please follow the steps to submit one. If you decided to change your mind, just type /cancel')
     update.message.reply_text("Please type your feedback:")
     return FIRST_STEP
 
-#feedback: get participant code
+#feedback submission
 def first_step(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
+    telegramid=str(update.message.from_user.id)
     if update.message.from_user.last_name==None:
         lastname=""
     else:
@@ -397,38 +409,42 @@ def first_step(update, context):
     else:
         username=update.message.from_user.username
     if update.message.text:
+        #ensures feedback is not a defined query
         if update.message.text !="Next NDP activity?" and  update.message.text !="Zoom link?" and update.message.text != "Countdown" and update.message.text !="Daily encouragement" and update.message.text !="Last updated?" and update.message.text !="Show all NDP activities": 
             lengthOfFeedback=len(update.message.text)
+            #ensures feedback is not too long or short
             if lengthOfFeedback>5:
                 if lengthOfFeedback<=500:
                     # if logged in
                     if 'participantCode' in context.user_data and context.user_data["participantCode"]!="":
                         partCode=context.user_data["participantCode"]
-                        url=baseurl+'feedback/'+partCode+'/'
+                        url=baseurl+'feedback/'+partCode+'/'+telegramid+'/'
                     else:
                         partCode=""
-                        url=baseurl+'feedback/nil/'
-                    data = {'participantCode': partCode,
+                        url=baseurl+'feedback/nil/'+telegramid+'/'
+                    data = {'telegramId':update.message.from_user.id,
+                            'participantCode': partCode,
                             'username':username,
                             'firstname': update.message.from_user.first_name,
                             'lastname': lastname,
                             "feedback": update.message.text
                             }
+                    #submit feedback
                     response = requests.post(url, data = data)
                     if response.status_code == 201:
                         update.message.reply_text("Thank you for your feedback!")
                         if update.message.from_user.username==None:
-                            logging.info(update.message.from_user.first_name+' successfully submitted feedback')
+                            logging.info(update.message.from_user.first_name+' ('+telegramid+') successfully submitted feedback')
                         else:
-                            logging.info(update.message.from_user.first_name+' ('+username+') '+'successfully submitted feedback')
+                            logging.info(update.message.from_user.first_name+' ('+username+', '+telegramid+') '+'successfully submitted feedback')
                         context.user_data.pop('cancelCmd', None)
                         context.user_data.pop('feedbackTriesNonText', None)
                         return ConversationHandler.END
                     else:
                         if update.message.from_user.username==None:
-                            logging.info(update.message.from_user.first_name+' failed to submit feedback')
+                            logging.info(update.message.from_user.first_name+' ('+telegramid+') failed to submit feedback')
                         else:
-                            logging.info(update.message.from_user.first_name+' ('+username+') '+'failed to submit feedback')
+                            logging.info(update.message.from_user.first_name+' ('+username+', '+telegramid+') '+'failed to submit feedback')
                         update.message.reply_text("Failed to submit feedback. Please try again later")
                         context.user_data.pop('cancelCmd', None)
                         context.user_data.pop('feedbackTriesNonText', None)
@@ -446,7 +462,7 @@ def first_step(update, context):
         if context.user_data["feedbackTriesNonText"]>=3:
             update.message.reply_text('You can type /cancel to exit')
         context.user_data["feedbackTriesNonText"]=context.user_data["feedbackTriesNonText"]+1
-        logging.info(update.message.from_user.first_name+' ('+username+') gave non-text reply on feedback')
+        logging.info(update.message.from_user.first_name+' ('+username+', '+telegramid+') gave non-text reply on feedback')
         update.message.reply_text('Input should be a text message. Please try again')
 
 #/cancel handler
@@ -454,10 +470,10 @@ def cancel(update, context):
     context.bot.send_chat_action(chat_id=update.message.chat.id, action=ChatAction.TYPING, timeout=None)
     if update.message.from_user.username==None:
         username=""
-        logging.info('Command issued by '+update.message.from_user.first_name+': cancel')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+str(update.message.from_user.id)+'): cancel')
     else:
         username=update.message.from_user.username
-        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+') '+': cancel')
+        logging.info('Command issued by '+update.message.from_user.first_name+' ('+username+', '+str(update.message.from_user.id)+'): cancel')
     if context.user_data["cancelCmd"]=="feedback":
         context.user_data.pop('feedbackTriesNonText', None)
         update.message.reply_text("Cancelled feedback submission")
@@ -481,7 +497,6 @@ def main():
     # Make sure to set use_context=True to use the new context based callbacks
     # Post version 12 this will no longer be necessary
     updater = Updater(TOKEN, use_context=True)
-
     # Get the dispatcher to register handlers
     dp = updater.dispatcher
 
