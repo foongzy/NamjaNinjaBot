@@ -1,5 +1,5 @@
 # NamjaNinjaBot
-NamjaNinjaBot is a telegram bot buddy for Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly.\
+NamjaNinjaBot is a Telegram bot buddy for Soka Gakkai Singapore (SGS) NDP 2022 participants to obtain NDP training and meeting details easily and quickly.\
  \
 Currently, the participants need to obtain information of trainings, meetings and encouragements from different sources such as trainers or websites. NamjaNinjaBot aims to streamline that by providing a central place for participants to obtain all the necessary information easily.\
  \
