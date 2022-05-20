@@ -24,12 +24,12 @@ This github repository contain the codes used to create the frontend of the Tele
 * Users need to key in a valid participant code before allowing them to send queries to the bot
 * User will be blocked for continuous incorrect participant code entry
 * List of queries:
- * Next NDP activity? - Shows the upcoming NDP activity along with details such as what to bring, attire to wear, zoom link, or things to note
- * Show all NDP activities - Shows the full list of upcoming NDP activities
- * Zoom link? - Gives the zoom link used for virtual trainings or meetings
- * Countdown - Shows the time left to the next NDP activity and NDP 2022
- * Daily encouragement - Provides daily encouragement based on [Soka Global Website](https://www.sokaglobal.org/)
- * Last updated? - Shows which training schedule updated in NamjaNinjaBot was based on
+  * Next NDP activity? - Shows the upcoming NDP activity along with details such as what to bring, attire to wear, zoom link, or things to note
+  * Show all NDP activities - Shows the full list of upcoming NDP activities
+  * Zoom link? - Gives the zoom link used for virtual trainings or meetings
+  * Countdown - Shows the time left to the next NDP activity and NDP 2022
+  * Daily encouragement - Provides daily encouragement based on [Soka Global Website](https://www.sokaglobal.org/)
+  * Last updated? - Shows which training schedule updated in NamjaNinjaBot was based on
 
 ## Source
 
