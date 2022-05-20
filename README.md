@@ -33,7 +33,7 @@ This github repository contain the codes used to create the frontend of the Tele
 
 ## Source
 
-NamjaNinjaBot utilises data obtained from [Soka Global Website](https://www.sokaglobal.org/), NDP 2022 organising committee, NDP 2022 Soka Gakkai Singapore Committee and Trainers.
+NamjaNinjaBot utilises data obtained from NDP 2022 organising committee, [Soka Global Website](https://www.sokaglobal.org/) and NDP 2022 [Soka Gakkai Singapore (SGS)](https://sokasingapore.org/) Committee and Trainers.
 
 ## Author
 
