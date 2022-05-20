@@ -18,6 +18,7 @@ This github repository contain the codes used to create the frontend of the Tele
 * /feedback: Allow users to provide feedback about the bot
 * /help: Provides users with the list of commands that they can use
 * /share: Generates a message to allow users to share the bot with other participants
+* /cancel: Escape login or feedback conversation
 
 ## Features
 
