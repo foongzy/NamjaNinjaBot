@@ -29,7 +29,7 @@ This github repository contain the codes used to create the frontend of the Tele
   * Zoom link? - Gives the zoom link used for virtual trainings or meetings
   * Countdown - Shows the time left to the next NDP activity and NDP 2022
   * Daily encouragement - Provides daily encouragement based on [Soka Global Website](https://www.sokaglobal.org/)
-  * Last updated? - Shows which training schedule updated in NamjaNinjaBot was based on
+  * Last updated? - Shows which updated training schedule NamjaNinjaBot was based on
 
 ## Source
 
