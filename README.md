@@ -23,6 +23,8 @@ This github repository contain the codes used to create the frontend of the Tele
 
 * Users need to key in a valid participant code before allowing them to send queries to the bot
 * User will be blocked for continuous incorrect participant code entry
+* Logging of important activities for NamjaNinjaBot performance monitoring and to ensure that the bot is used for its intended purpose only
+* Users can provide feedback to the bot
 * List of queries:
   * Next NDP activity? - Shows the upcoming NDP activity along with details such as what to bring, attire to wear, zoom link, or things to note
   * Show all NDP activities - Shows the full list of upcoming NDP activities
