@@ -204,7 +204,7 @@ def reply(update, context):
                         reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
                     if dataTrain[smallestDateIndex]["location"]=="Zoom":
                         reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
-                    if dataTrain[smallestDateIndex]["title"]=="NDP Training":
+                    if re.match("^NDP Training[a-zA-Z0-9]*", dataTrain[smallestDateIndex]["title"]):
                         reply=reply+"\n\n"+"Attire: "
                         for i in range(0, len(dataDets["training_attire"])):
                             reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
