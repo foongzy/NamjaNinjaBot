@@ -212,6 +212,8 @@ def reply(update, context):
                             reply=reply+"\n"+"Things to Bring: "
                             for i in range(0, len(dataDets["training_bring"])):
                                 reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
+                            if re.match("^NDP ([NC][ER] [1-3]|Preview|2022)", dataTrain[smallestDateIndex]["title"]):
+                                reply=reply+"\n    "+str(i+1)+") "+"Costume"
                     logging.info(context.user_data["participantCode"]+': Successfully answered question')
                     update.message.reply_text(reply, parse_mode='Markdown')
                 else:
