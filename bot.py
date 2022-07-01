@@ -208,7 +208,7 @@ def reply(update, context):
                         reply=reply+"\n\n"+"Attire: "
                         for i in range(0, len(dataDets["training_attire"])):
                             reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
-                        if dataTrain[smallestDateIndex]["location"]=="Keat Hong Camp":
+                        if dataTrain[smallestDateIndex]["location"]=="Floating Platform" or dataTrain[smallestDateIndex]["location"]=="Senja Soka Centre":
                             reply=reply+"\n"+"Things to Bring: "
                             for i in range(0, len(dataDets["training_bring"])):
                                 reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
@@ -343,7 +343,7 @@ def reply(update, context):
                     else:
                         dayStr="Days"
                     countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
-                    NDPDate=datetime(2022, 9, 9)
+                    NDPDate=datetime(2022, 8, 9)
                     NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
                     countdownToNDP=NDPDate-today
                     seconds = countdownToNDP.total_seconds()
