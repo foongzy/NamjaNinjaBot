@@ -203,12 +203,12 @@ def reply(update, context):
                                     daysdiff=difftemp
                         i=i+1
                     # Check if pass 9 Aug
-                    if today > datetimeInterator and dataTrain[postcelebrationInt]["datetime_end"]=="TBA":
+                    if today > ndpDatetime and dataTrain[postcelebrationInt]["datetime_end"]=="TBA":
                         reply = "Hope NamjaNinjaBot was useful to you in some way or another. The NDP Post Celebration Details have not been updated or released. This will be updated in due time. See you at the post celebrations and congratulations on completing NDP 2022!"
                         logging.info(context.user_data["participantCode"]+': Successfully answered question')
                         update.message.reply_text(reply, parse_mode='Markdown')
                     # Check if pass post celebrations
-                    elif today > datetimeInterator and dataTrain[postcelebrationInt]["datetime_end"]!="TBA":
+                    elif today > ndpDatetime and dataTrain[postcelebrationInt]["datetime_end"]!="TBA":
                         datetimePostCeleb=datetime.strptime(dataTrain[postcelebrationInt]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
                         datetimePostCeleb=datetimePostCeleb.replace(tzinfo=ZoneInfo('Singapore'))
                         if today > datetimePostCeleb:
