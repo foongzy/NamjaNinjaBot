@@ -203,13 +203,13 @@ def reply(update, context):
                                     daysdiff=difftemp
                         i=i+1
                     # Check if pass 9 Aug
-                    if today > datetimeInterator and data["schedule"][postcelebrationInt]["datetime_end"]=="TBA":
+                    if today > datetimeInterator and dataTrain[postcelebrationInt]["datetime_end"]=="TBA":
                         reply = "Hope NamjaNinjaBot was useful to you in some way or another. The NDP Post Celebration Details have not been updated or released. This will be updated in due time. See you at the post celebrations and congratulations on completing NDP 2022!"
                         logging.info(context.user_data["participantCode"]+': Successfully answered question')
                         update.message.reply_text(reply, parse_mode='Markdown')
                     # Check if pass post celebrations
-                    elif today > datetimeInterator and data["schedule"][postcelebrationInt]["datetime_end"]!="TBA":
-                        datetimePostCeleb=datetime.strptime(data["schedule"][postcelebrationInt]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                    elif today > datetimeInterator and dataTrain[postcelebrationInt]["datetime_end"]!="TBA":
+                        datetimePostCeleb=datetime.strptime(dataTrain[postcelebrationInt]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
                         datetimePostCeleb=datetimePostCeleb.replace(tzinfo=ZoneInfo('Singapore'))
                         if today > datetimePostCeleb:
                             reply = "NDP 2022 has come to an end. Thank you for using NamjaNinjaBot and hope it has helped you on this journey. May you continue to achieve more victories in the future! NamjaNinjaBot signing off~"
@@ -362,7 +362,7 @@ def reply(update, context):
                     dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                     dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
                     countdownToNext=dateToFormat-today
-                    if countdownToNext>0:
+                    if dateToFormat > today:
                         seconds = countdownToNext.total_seconds()
                         hours = str(seconds // 3600 % 24).replace(".0","")
                         minutes = str((seconds % 3600) // 60).replace(".0","")
@@ -377,7 +377,7 @@ def reply(update, context):
                     NDPDate=datetime(2022, 8, 9)
                     NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
                     countdownToNDP=NDPDate-today
-                    if countdownToNDP>0:
+                    if NDPDate > today:
                         seconds = countdownToNDP.total_seconds()
                         hours = str(seconds // 3600 % 24).replace(".0","")
                         minutes = str((seconds % 3600) // 60).replace(".0","")
