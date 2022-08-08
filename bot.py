@@ -182,40 +182,63 @@ def reply(update, context):
                     today = datetime.now(ZoneInfo('Singapore'))
                     daysdiff=""
                     smallestDateIndex=""
+                    ndpInt=""
+                    ndpDatetime=""
+                    postcelebrationInt=""
                     i=0
                     for item in dataTrain:
+                        if re.search("^NDP [0-9][0-9][0-9][0-9] Post Celebration$", item["title"]):
+                            postcelebrationInt = i
                         if item["datetime_end"]!="TBA":
                             datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
                             datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
+                            # If NDP, save details for use later
+                            if datetimeInterator.day == 9 and datetimeInterator.month == 8:
+                                ndpInt = i
+                                ndpDatetime = datetimeInterator
                             if datetimeInterator > today:
                                 difftemp=datetimeInterator-today
                                 if daysdiff == "" or difftemp < daysdiff:
                                     smallestDateIndex=i
                                     daysdiff=difftemp
                         i=i+1
-                    # Format Date to Display
-                    dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                    dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                    dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
-                    dateToFormatEnd=dateToFormatEnd.replace(tzinfo=ZoneInfo('Singapore'))
-                    # Format reply
-                    reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
-                    if dataTrain[smallestDateIndex]["Note"]!="Nil":
-                        reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
-                    if dataTrain[smallestDateIndex]["location"]=="Zoom":
-                        reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
-                    if re.match("^NDP (Training[a-zA-Z1-4]*|[NC][ER] [1-3]|Preview|2022)", dataTrain[smallestDateIndex]["title"]):
-                        reply=reply+"\n\n"+"Attire: "
-                        for i in range(0, len(dataDets["training_attire"])):
-                            reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
-                        if dataTrain[smallestDateIndex]["location"]=="Floating Platform" or dataTrain[smallestDateIndex]["location"]=="Senja Soka Centre":
-                            reply=reply+"\n"+"Things to Bring: "
-                            for i in range(0, len(dataDets["training_bring"])):
-                                reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
-                            if re.match("^NDP ([NC][ER] [1-3]|Preview|2022)", dataTrain[smallestDateIndex]["title"]):
-                                reply=reply+"\n    "+str(i+1)+") "+"Costume"
-                    logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                    update.message.reply_text(reply, parse_mode='Markdown')
+                    # Check if pass 9 Aug
+                    if today > datetimeInterator and data["schedule"][postcelebrationInt]["datetime_end"]=="TBA":
+                        reply = "Hope NamjaNinjaBot was useful to you in some way or another. The NDP Post Celebration Details have not been updated or released. This will be updated in due time. See you at the post celebrations and congratulations on completing NDP 2022!"
+                        logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                        update.message.reply_text(reply, parse_mode='Markdown')
+                    # Check if pass post celebrations
+                    elif today > datetimeInterator and data["schedule"][postcelebrationInt]["datetime_end"]!="TBA":
+                        datetimePostCeleb=datetime.strptime(data["schedule"][postcelebrationInt]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        datetimePostCeleb=datetimePostCeleb.replace(tzinfo=ZoneInfo('Singapore'))
+                        if today > datetimePostCeleb:
+                            reply = "NDP 2022 has come to an end. Thank you for using NamjaNinjaBot and hope it has helped you on this journey. May you continue to achieve more victories in the future! NamjaNinjaBot signing off~"
+                            logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                            update.message.reply_text(reply, parse_mode='Markdown')
+                    else:
+                        # Format Date to Display
+                        dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                        dateToFormatEnd=datetime.strptime(dataTrain[smallestDateIndex]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                        dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
+                        dateToFormatEnd=dateToFormatEnd.replace(tzinfo=ZoneInfo('Singapore'))
+                        # Format reply
+                        reply="*"+dataTrain[smallestDateIndex]["title"]+"*\n"+"📍: "+dataTrain[smallestDateIndex]["location"]+"\n"+"📅:"+dateToFormat.strftime(" %d %b %Y, %a").replace(' 0', ' ')+"\n"+"🕓:"+dateToFormat.strftime(" %I:%M%p -").replace(' 0', ' ') + dateToFormatEnd.strftime(" %I:%M%p").replace(' 0', ' ')
+                        if dataTrain[smallestDateIndex]["Note"]!="Nil":
+                            reply=reply+"\n"+"📝: "+dataTrain[smallestDateIndex]["Note"]
+                        if dataTrain[smallestDateIndex]["location"]=="Zoom":
+                            reply=reply+"\n"+"Zoom Link: "+dataDets["zoomlink"]
+                        if re.match("^NDP (Training[a-zA-Z1-4]*|[NC][ER] [1-3]|Preview|2022)", dataTrain[smallestDateIndex]["title"]):
+                            reply=reply+"\n\n"+"Attire: "
+                            for i in range(0, len(dataDets["training_attire"])):
+                                reply=reply+"\n    "+"- "+dataDets["training_attire"][i]
+                            if dataTrain[smallestDateIndex]["location"]=="Floating Platform" or dataTrain[smallestDateIndex]["location"]=="Senja Soka Centre":
+                                reply=reply+"\n"+"Things to Bring: "
+                                for i in range(0, len(dataDets["training_bring"])):
+                                    reply=reply+"\n    "+str(i+1)+") "+dataDets["training_bring"][i]
+                                if re.match("^NDP ([NC][ER] [1-3]|Preview|2022)", dataTrain[smallestDateIndex]["title"]):
+                                    reply=reply+"\n    "+str(i+2)+") "+"Costume"
+                        logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                        update.message.reply_text(reply, parse_mode='Markdown')
                 else:
                     logging.error(context.user_data["participantCode"]+': Failed to get DB data')
                     update.message.reply_text("Unable to get next training details. Please try again later or type /start to reset")
@@ -250,25 +273,28 @@ def reply(update, context):
                     #sort by date for activity with end datetime then add TBA trainings at the back
                     sortedRemainingTrain = sorted(remainingTrain, key=lambda d: d['endDate'])
                     sortedRemainingTrain=sortedRemainingTrain+tbaEndTrain
-                    # Format reply
                     reply="*NDP Activity Schedule*"
-                    i=1
-                    for activity in sortedRemainingTrain:
-                        reply=reply+"\n"+str(i)+") "+activity["title"]+": "
-                        if activity["datetime_end"]!="TBA":
-                            reply=reply+activity["endDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')
-                        else:
-                            reply=reply + "TBA"
-                        if activity["datetime_start"]!="TBA":
-                            reply=reply+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
-                        else:
-                            reply=reply+", TBA - "
-                        if activity["datetime_end"]!="TBA":
-                            reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
-                        else:
-                            reply=reply+"TBA"
-                        reply=reply+" @ "+activity["location"]
-                        i=i+1
+                    if len(sortedRemainingTrain)==0:
+                        reply="NDP 2022 has come to an end. Thank you for using NamjaNinjaBot and hope it has helped you on this journey. May you continue to achieve more victories in the future! NamjaNinjaBot signing off~"
+                    else:
+                        # Format reply
+                        i=1
+                        for activity in sortedRemainingTrain:
+                            reply=reply+"\n"+str(i)+") "+activity["title"]+": "
+                            if activity["datetime_end"]!="TBA":
+                                reply=reply+activity["endDate"].strftime(" %d %b %Y (%a)").replace(' 0', ' ')
+                            else:
+                                reply=reply + "TBA"
+                            if activity["datetime_start"]!="TBA":
+                                reply=reply+", "+activity["startDate"].strftime(" %I:%M%p -").replace(' 0', ' ')
+                            else:
+                                reply=reply+", TBA - "
+                            if activity["datetime_end"]!="TBA":
+                                reply=reply+activity["endDate"].strftime(" %I:%M%p").replace(' 0', ' ')
+                            else:
+                                reply=reply+"TBA"
+                            reply=reply+" @ "+activity["location"]
+                            i=i+1
                         
                     logging.info(context.user_data["participantCode"]+': Successfully answered question')
                     update.message.reply_text(reply, parse_mode='Markdown')
@@ -336,27 +362,33 @@ def reply(update, context):
                     dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                     dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
                     countdownToNext=dateToFormat-today
-                    seconds = countdownToNext.total_seconds()
-                    hours = str(seconds // 3600 % 24).replace(".0","")
-                    minutes = str((seconds % 3600) // 60).replace(".0","")
-                    seconds = str(math.floor(seconds % 60))
-                    if countdownToNext.days==1:
-                        dayStr="Day"
+                    if countdownToNext>0:
+                        seconds = countdownToNext.total_seconds()
+                        hours = str(seconds // 3600 % 24).replace(".0","")
+                        minutes = str((seconds % 3600) // 60).replace(".0","")
+                        seconds = str(math.floor(seconds % 60))
+                        if countdownToNext.days==1:
+                            dayStr="Day"
+                        else:
+                            dayStr="Days"
+                        countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                     else:
-                        dayStr="Days"
-                    countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                        countdownToNextStr="Countdown has ended"
                     NDPDate=datetime(2022, 8, 9)
                     NDPDate=NDPDate.replace(tzinfo=ZoneInfo('Singapore'))
                     countdownToNDP=NDPDate-today
-                    seconds = countdownToNDP.total_seconds()
-                    hours = str(seconds // 3600 % 24).replace(".0","")
-                    minutes = str((seconds % 3600) // 60).replace(".0","")
-                    seconds = str(math.floor(seconds % 60))
-                    if countdownToNDP.days==1:
-                        dayStr="Day"
+                    if countdownToNDP>0:
+                        seconds = countdownToNDP.total_seconds()
+                        hours = str(seconds // 3600 % 24).replace(".0","")
+                        minutes = str((seconds % 3600) // 60).replace(".0","")
+                        seconds = str(math.floor(seconds % 60))
+                        if countdownToNDP.days==1:
+                            dayStr="Day"
+                        else:
+                            dayStr="Days"
+                        countdownToNDPStr=str(countdownToNDP.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                     else:
-                        dayStr="Days"
-                    countdownToNDPStr=str(countdownToNDP.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                        countdownToNDPStr="Countdown has ended"
                     logging.info(context.user_data["participantCode"]+': Successfully answered question')
                     update.message.reply_text('🎉 *Countdown* 🎉\nNext NDP activity: '+countdownToNextStr+'\nNDP 2022: '+countdownToNDPStr, parse_mode='Markdown')
                 else:
