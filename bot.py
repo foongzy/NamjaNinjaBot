@@ -185,10 +185,14 @@ def reply(update, context):
                     ndpInt=""
                     ndpDatetime=""
                     postcelebrationInt=""
+                    ndpPostCelebDatetime=""
                     i=0
                     for item in dataTrain:
                         if re.search("^NDP [0-9][0-9][0-9][0-9] Post Celebration$", item["title"]):
                             postcelebrationInt = i
+                            if item["datetime_end"]!="TBA":
+                                ndpPostCelebDatetime=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
+                                ndpPostCelebDatetime=ndpPostCelebDatetime.replace(tzinfo=ZoneInfo('Singapore'))
                         if item["datetime_end"]!="TBA":
                             datetimeInterator=datetime.strptime(item["datetime_end"], '%Y-%m-%dT%H:%M:%S')
                             datetimeInterator=datetimeInterator.replace(tzinfo=ZoneInfo('Singapore'))
@@ -208,13 +212,10 @@ def reply(update, context):
                         logging.info(context.user_data["participantCode"]+': Successfully answered question')
                         update.message.reply_text(reply, parse_mode='Markdown')
                     # Check if pass post celebrations
-                    elif today > ndpDatetime and dataTrain[postcelebrationInt]["datetime_end"]!="TBA":
-                        datetimePostCeleb=datetime.strptime(dataTrain[postcelebrationInt]["datetime_end"], '%Y-%m-%dT%H:%M:%S')
-                        datetimePostCeleb=datetimePostCeleb.replace(tzinfo=ZoneInfo('Singapore'))
-                        if today > datetimePostCeleb:
-                            reply = "NDP 2022 has come to an end. Thank you for using NamjaNinjaBot and hope it has helped you on this journey. May you continue to achieve more victories in the future! NamjaNinjaBot signing off~"
-                            logging.info(context.user_data["participantCode"]+': Successfully answered question')
-                            update.message.reply_text(reply, parse_mode='Markdown')
+                    elif today > ndpPostCelebDatetime and dataTrain[postcelebrationInt]["datetime_end"]!="TBA":
+                        reply = "NDP 2022 has come to an end. Thank you for using NamjaNinjaBot and hope it has helped you on this journey. May you continue to achieve more victories in the future! NamjaNinjaBot signing off~"
+                        logging.info(context.user_data["participantCode"]+': Successfully answered question')
+                        update.message.reply_text(reply, parse_mode='Markdown')
                     else:
                         # Format Date to Display
                         dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
