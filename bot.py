@@ -359,19 +359,20 @@ def reply(update, context):
                                     smallestDateIndex=i
                                     daysdiff=difftemp
                         i=i+1
-                    dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
-                    dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
-                    countdownToNext=dateToFormat-today
-                    if dateToFormat > today:
-                        seconds = countdownToNext.total_seconds()
-                        hours = str(seconds // 3600 % 24).replace(".0","")
-                        minutes = str((seconds % 3600) // 60).replace(".0","")
-                        seconds = str(math.floor(seconds % 60))
-                        if countdownToNext.days==1:
-                            dayStr="Day"
-                        else:
-                            dayStr="Days"
-                        countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
+                    if dataTrain[smallestDateIndex]["datetime_start"]!="TBA":
+                        dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
+                        dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
+                        countdownToNext=dateToFormat-today
+                        if dateToFormat > today:
+                            seconds = countdownToNext.total_seconds()
+                            hours = str(seconds // 3600 % 24).replace(".0","")
+                            minutes = str((seconds % 3600) // 60).replace(".0","")
+                            seconds = str(math.floor(seconds % 60))
+                            if countdownToNext.days==1:
+                                dayStr="Day"
+                            else:
+                                dayStr="Days"
+                            countdownToNextStr=str(countdownToNext.days)+" "+dayStr+", "+hours+"h "+minutes+"m "+seconds+"s"
                     else:
                         countdownToNextStr="Countdown has ended"
                     NDPDate=datetime(2022, 8, 9)
