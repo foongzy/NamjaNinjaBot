@@ -359,7 +359,7 @@ def reply(update, context):
                                     smallestDateIndex=i
                                     daysdiff=difftemp
                         i=i+1
-                    if dataTrain[smallestDateIndex]["datetime_start"]!="TBA":
+                    if isinstance(smallestDateIndex, int):
                         dateToFormat=datetime.strptime(dataTrain[smallestDateIndex]["datetime_start"], '%Y-%m-%dT%H:%M:%S')
                         dateToFormat=dateToFormat.replace(tzinfo=ZoneInfo('Singapore'))
                         countdownToNext=dateToFormat-today
