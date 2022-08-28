@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 FIRST_STEP = range(1)
 LOGIN_STEP = range(1)
 
-baseurl = 'https://telegrambots-db.herokuapp.com/api/namjaninjabot/'
+baseurl = 'https://telegrambotsdb.pythonanywhere.com/api/namjaninjabot/'
 # baseurl = 'http://127.0.0.1:8000/api/namjaninjabot/'
 
 #/start handler
