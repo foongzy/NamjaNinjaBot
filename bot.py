@@ -10,7 +10,9 @@ import json
 import re
 import requests
 import math
-from dotenv import load_dotenv
+import teleport
+import urllib3
+import time
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
@@ -569,18 +571,28 @@ def main():
     # log all errors
     dp.add_error_handler(error)
 
-    # Start the Bot
-    # updater.start_polling()
-    PORT = int(os.environ.get("PORT", "8443"))
-    updater.start_webhook(listen="0.0.0.0",
-                          port=PORT,
-                          url_path=TOKEN,
-                          webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
+    # # Start the Bot
+    # # updater.start_polling()
+    # PORT = int(os.environ.get("PORT", "8443"))
+    # updater.start_webhook(listen="0.0.0.0",
+    #                       port=PORT,
+    #                       url_path=TOKEN,
+    #                       webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
 
-    # Run the bot until you press Ctrl-C or the process receives SIGINT,
-    # SIGTERM or SIGABRT. This should be used most of the time, since
-    # start_polling() is non-blocking and will stop the bot gracefully.
-    updater.idle()
+    # # Run the bot until you press Ctrl-C or the process receives SIGINT,
+    # # SIGTERM or SIGABRT. This should be used most of the time, since
+    # # start_polling() is non-blocking and will stop the bot gracefully.
+    # updater.idle()
+
+    # You can leave this bit out if you're using a paid PythonAnywhere account
+    proxy_url = "http://proxy.server:3128"
+    telepot.api._pools = {
+        'default': urllib3.ProxyManager(proxy_url=proxy_url, num_pools=3, maxsize=10, retries=False, timeout=30),
+    }
+    telepot.api._onetime_pool_spec = (urllib3.ProxyManager, dict(proxy_url=proxy_url, num_pools=1, maxsize=1, retries=False, timeout=30))
+    # end of the stuff that's only needed for free accounts
+    while 1:
+        time.sleep(10)
 
 
 if __name__ == '__main__':
