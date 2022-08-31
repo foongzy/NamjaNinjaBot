@@ -12,11 +12,20 @@ import requests
 import math
 from dotenv import load_dotenv
 
+from flask import Flask
+from flask import request
+from flask import Response
+
+from flask_sslify import SSLify
+
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 # TOKEN = os.environ["TOKEN"]
 TOKEN = os.getenv("TOKEN")
+
+app = Flask(__name__)
+sslify = SSLify(app)
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
