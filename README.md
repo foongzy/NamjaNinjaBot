@@ -5,7 +5,7 @@ Currently, the participants need to obtain information of trainings, meetings an
  \
 Frontend: Telegram App\
 Backend: Django\
-Database: PostgreSQL\
+Database: MySQL\
  \
 Click [here](https://t.me/NamjaNinjabot) to open Telegram and view the bot.\
  \
