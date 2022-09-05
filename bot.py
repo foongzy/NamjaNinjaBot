@@ -12,20 +12,11 @@ import requests
 import math
 from dotenv import load_dotenv
 
-from flask import Flask
-from flask import request
-from flask import Response
-
-from flask_sslify import SSLify
-
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 # TOKEN = os.environ["TOKEN"]
 TOKEN = os.getenv("TOKEN")
-
-app = Flask(__name__)
-sslify = SSLify(app)
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -579,18 +570,17 @@ def main():
     dp.add_error_handler(error)
 
     # Start the Bot
-    updater.start_polling()
-    # PORT = int(os.environ.get("PORT", "8443"))
-    # updater.start_webhook(listen="0.0.0.0",
-    #                       port=PORT,
-    #                       url_path=TOKEN,
-    #                       webhook_url="https://namjaninjabot.pythonanywhere.com/" + TOKEN)
+    # updater.start_polling()
+    PORT = int(os.environ.get("PORT", "8443"))
+    updater.start_webhook(listen="0.0.0.0",
+                          port=PORT,
+                          url_path=TOKEN,
+                          webhook_url="https://namjaninjabot.herokuapp.com/" + TOKEN)
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT,
     # SIGTERM or SIGABRT. This should be used most of the time, since
     # start_polling() is non-blocking and will stop the bot gracefully.
-    # updater.idle()
-
+    updater.idle()
 
 if __name__ == '__main__':
     main()
