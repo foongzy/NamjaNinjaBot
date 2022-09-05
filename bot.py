@@ -10,7 +10,6 @@ import json
 import re
 import requests
 import math
-from dotenv import load_dotenv
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
