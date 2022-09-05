@@ -16,7 +16,6 @@ from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
 TOKEN = os.environ["TOKEN"]
-# TOKEN = os.getenv("TOKEN")
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -28,7 +27,6 @@ FIRST_STEP = range(1)
 LOGIN_STEP = range(1)
 
 baseurl = 'https://telegrambotsdb.pythonanywhere.com/api/namjaninjabot/'
-# baseurl = 'http://127.0.0.1:8000/api/namjaninjabot/'
 
 #/start handler
 def start(update, context: CallbackContext):
