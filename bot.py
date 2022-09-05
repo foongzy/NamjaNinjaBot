@@ -15,8 +15,8 @@ from dotenv import load_dotenv
 from telegram import ReplyKeyboardMarkup, KeyboardButton, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, ConversationHandler
 
-# TOKEN = os.environ["TOKEN"]
-TOKEN = os.getenv("TOKEN")
+TOKEN = os.environ["TOKEN"]
+# TOKEN = os.getenv("TOKEN")
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
